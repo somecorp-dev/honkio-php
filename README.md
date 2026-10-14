@@ -95,11 +95,11 @@ $honkio->emails->send($params, idempotencyKey: 'welcome-user-42');
 
 ## Request shapes
 
-Parameters are arrays with the API's snake_case keys (`scheduled_at`, `is_commercial`, `reply_to`). A key you leave out is not sent; a key set to `null` is sent as JSON null, which clears a nullable field (`$honkio->templates->update('welcome', ['html' => null])`). In query parameters `null` means "not given" and is left out. A `DateTimeInterface` is converted to UTC and sent as ISO 8601 with a `Z` suffix (`2026-10-14T16:30:00.000Z`). The two fields the API declares as plain dates (`date_from` and `date_to` on `messages->list`, `last_transaction_date` on `consents->create`) take a `YYYY-MM-DD` string; a `DateTimeInterface` passed there is sent as its UTC date.
+Parameters are arrays with the API's snake_case keys (`scheduled_at`, `is_commercial`, `reply_to`). A key you leave out is not sent; a key set to `null` is sent as JSON null, which clears a nullable field (`$honkio->templates->update('welcome', ['html' => null])`). In query parameters `null` means "not given" and is left out. A `DateTimeInterface` is converted to UTC and sent as ISO 8601 with a `Z` suffix (`2026-10-14T16:30:00.000Z`). The fields the API declares as plain dates (`date_from` and `date_to` on `messages->list`, `last_transaction_date` on `consents->create`) take a `YYYY-MM-DD` string; a `DateTimeInterface` passed there is sent as its UTC date.
 
 An empty array for an object-typed field is sent as `[]`, not `{}`; pass `new \stdClass()` for an empty object. The one exception is `emails->send` and `batch->send`, where an empty `variables` or `headers` map is always sent as `{}`. (On `templates` and `emails->received->simulate` the same keys are lists, and stay lists.)
 
- Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=b`). Ids and other path values are separate string arguments: `$honkio->webhooks->update($id, ['active' => false])`. Deletes return `null`.
+Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=b`). Ids and other path values are separate string arguments: `$honkio->webhooks->update($id, ['active' => false])`. Deletes return `null`.
 
 ## Resources
 
