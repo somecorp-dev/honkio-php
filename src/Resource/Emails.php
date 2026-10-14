@@ -23,7 +23,7 @@ final class Emails
      */
     public function send(array $params, ?string $idempotencyKey = null): array
     {
-        return $this->http->callArray('POST', '/v1/emails', [], [], $params, $idempotencyKey);
+        return $this->http->callArray('POST', '/v1/emails', [], [], $params, $idempotencyKey, false, ['variables', 'headers']);
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Honkio\Resource;
 
 use Honkio\Exception\InvalidArgumentException;
+use Honkio\Http\Dates;
 use Honkio\Http\HttpClient;
 
 final class Consents
@@ -14,14 +15,15 @@ final class Consents
     }
 
     /**
-     * Record consent for a phone number or an email address.
+     * Record consent for a phone number or an email address. `last_transaction_date`
+     * is a date: a string `YYYY-MM-DD`, or a DateTimeInterface (sent as its UTC date).
      *
      * @param array<string, mixed> $params
      * @return array<mixed>
      */
     public function create(array $params): array
     {
-        return $this->http->callArray('POST', '/v1/compliance/consents', [], [], $params);
+        return $this->http->callArray('POST', '/v1/compliance/consents', [], [], Dates::dateOnly($params, ['last_transaction_date']));
     }
 
     /**

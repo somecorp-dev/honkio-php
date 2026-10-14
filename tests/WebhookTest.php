@@ -20,6 +20,9 @@ final class WebhookTest extends TestCase
     /** @return array{secret: string, timestamp: string, body: string, signature: string} */
     private static function vector(): array
     {
+        if (!Monorepo::present()) {
+            self::markTestSkipped(Monorepo::skipReason());
+        }
         $source = (string) file_get_contents(self::VECTOR_FILE);
         self::assertSame(1, preg_match('/const WEBHOOK_TEST_VECTOR = `([\s\S]*?)`/', $source, $block), 'vector not found');
         $field = static function (string $name) use ($block): string {
@@ -185,6 +188,9 @@ final class WebhookTest extends TestCase
 
     public function testWebhookEventsMatchTheApiUnion(): void
     {
+        if (!Monorepo::present()) {
+            $this->markTestSkipped(Monorepo::skipReason());
+        }
         $this->assertFileExists(self::API_EVENTS_FILE, 'api/src/services/webhookDelivery.ts is missing; was it renamed?');
         $source = (string) file_get_contents(self::API_EVENTS_FILE);
         $this->assertSame(1, preg_match('/export type WebhookEventType =([\s\S]*?);/', $source, $block), 'WebhookEventType not found');

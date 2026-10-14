@@ -17,9 +17,6 @@ use Honkio\Honkio;
  */
 final class HttpClient
 {
-    /** Maps whose own keys are the caller's, not the API's: template variables, custom headers, metadata. */
-    private const OPAQUE_KEYS = ['variables', 'headers', 'metadata'];
-
     public function __construct(
         private readonly string $apiKey,
         private readonly string $baseUrl,
@@ -34,6 +31,7 @@ final class HttpClient
      * @param array<string, string> $pathParams
      * @param array<string, mixed> $query
      * @param array<mixed>|null $body null sends no body
+     * @param list<string> $objectKeys keys whose value is a caller-owned map (the email `variables` and `headers`): an empty one is sent as {}, not []
      *
      * @throws ApiException
      * @throws ConnectionException
@@ -47,14 +45,16 @@ final class HttpClient
         ?array $body = null,
         ?string $idempotencyKey = null,
         bool $bodyIsList = false,
+        array $objectKeys = [],
     ): mixed {
-        return $this->execute($method, $template, $pathParams, $query, $body, $idempotencyKey, $bodyIsList)[1];
+        return $this->execute($method, $template, $pathParams, $query, $body, $idempotencyKey, $bodyIsList, $objectKeys)[1];
     }
 
     /**
      * @param array<string, string> $pathParams
      * @param array<string, mixed> $query
      * @param array<mixed>|null $body
+     * @param list<string> $objectKeys
      * @return array{int, mixed} the HTTP status and the decoded response
      */
     private function execute(
@@ -65,6 +65,7 @@ final class HttpClient
         ?array $body,
         ?string $idempotencyKey,
         bool $bodyIsList,
+        array $objectKeys = [],
     ): array {
         $headers = [
             'Authorization' => 'Bearer ' . $this->apiKey,
@@ -74,7 +75,7 @@ final class HttpClient
         $options = ['headers' => $headers];
         if ($body !== null) {
             $options['headers']['Content-Type'] = 'application/json';
-            $normalized = self::normalize($body);
+            $normalized = self::normalize($body, $objectKeys);
             // The API expects objects: an empty map is {} (a batch body is a list by design).
             if ($normalized === [] && !$bodyIsList) {
                 $normalized = new \stdClass();
@@ -100,6 +101,7 @@ final class HttpClient
      * @param array<string, string> $pathParams
      * @param array<string, mixed> $query
      * @param array<mixed>|null $body
+     * @param list<string> $objectKeys see call()
      * @return array<mixed>
      *
      * @throws ApiException
@@ -114,8 +116,9 @@ final class HttpClient
         ?array $body = null,
         ?string $idempotencyKey = null,
         bool $bodyIsList = false,
+        array $objectKeys = [],
     ): array {
-        [$status, $result] = $this->execute($method, $template, $pathParams, $query, $body, $idempotencyKey, $bodyIsList);
+        [$status, $result] = $this->execute($method, $template, $pathParams, $query, $body, $idempotencyKey, $bodyIsList, $objectKeys);
         if (!is_array($result)) {
             throw ApiException::create('application_error', 'The API answered with JSON that is not an object or a list.', $status);
         }
@@ -247,10 +250,12 @@ final class HttpClient
     /**
      * Turns datetimes into ISO 8601. Null values are kept and sent as JSON null
      * (the caller clears a nullable field by passing null, and leaves a field
-     * alone by omitting the key). The values under variables, headers and
-     * metadata are the caller's own and stay as given; when empty they are objects.
+     * alone by omitting the key). The values under $objectKeys are the caller's
+     * own maps and stay as given; when empty they are objects.
+     *
+     * @param list<string> $objectKeys
      */
-    private static function normalize(mixed $value): mixed
+    private static function normalize(mixed $value, array $objectKeys): mixed
     {
         if ($value instanceof \DateTimeInterface) {
             return self::iso($value);
@@ -259,15 +264,15 @@ final class HttpClient
             return $value;
         }
         if (array_is_list($value)) {
-            return array_map(self::normalize(...), $value);
+            return array_map(static fn (mixed $item): mixed => self::normalize($item, $objectKeys), $value);
         }
         $out = [];
         foreach ($value as $key => $item) {
-            if (in_array($key, self::OPAQUE_KEYS, true)) {
+            if (in_array($key, $objectKeys, true)) {
                 // Always an object, even when empty.
                 $out[$key] = $item === [] ? new \stdClass() : $item;
             } else {
-                $out[$key] = self::normalize($item);
+                $out[$key] = self::normalize($item, $objectKeys);
             }
         }
 

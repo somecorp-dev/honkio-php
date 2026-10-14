@@ -172,15 +172,15 @@ final class HttpClientTest extends TestCase
         $mock = new MockHttp(array_fill(0, 6, new Response(200, [], '{}')));
         $client = $this->client($mock);
         $client->call('PUT', '/v1/business-verification', [], [], []);
-        $client->call('POST', '/v1/emails', [], [], ['headers' => [], 'to' => []]);
-        $client->call('POST', '/v1/emails', [], [], ['variables' => [], 'metadata' => []]);
+        $client->call('POST', '/v1/emails', [], [], ['headers' => [], 'to' => []], null, false, ['headers']);
+        $client->call('POST', '/v1/emails', [], [], ['variables' => [], 'metadata' => []], null, false, ['variables']);
         $client->call('POST', '/v1/emails', [], [], ['a' => ['b' => null], 'c' => null]);
         $client->call('POST', '/v1/emails/batch', [], [], [], null, true);
         $client->call('POST', '/v1/emails', [], [], ['x' => ['y' => ['z' => []]]]);
 
         $this->assertSame('{}', (string) $mock->request(0)->getBody());
         $this->assertSame('{"headers":{},"to":[]}', (string) $mock->request(1)->getBody());
-        $this->assertSame('{"variables":{},"metadata":{}}', (string) $mock->request(2)->getBody());
+        $this->assertSame('{"variables":{},"metadata":[]}', (string) $mock->request(2)->getBody());
         $this->assertSame('{"a":{"b":null},"c":null}', (string) $mock->request(3)->getBody());
         $this->assertSame('[]', (string) $mock->request(4)->getBody());
         $this->assertSame('{"x":{"y":{"z":[]}}}', (string) $mock->request(5)->getBody());

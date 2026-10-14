@@ -168,7 +168,7 @@ final class EmailResourcesTest extends TestCase
             MockHttp::json(200, ['data' => []]),
             new Response(204),
         ]);
-        $honkio->templates->create(['name' => 'Welcome', 'variables' => ['firstName' => 'string']]);
+        $honkio->templates->create(['name' => 'Welcome', 'variables' => [['key' => 'firstName']]]);
         $honkio->templates->get('welcome');
         $honkio->templates->list(['limit' => 2]);
         $honkio->templates->update('welcome', ['subject' => 'Hi {{{firstName}}}']);
@@ -177,7 +177,7 @@ final class EmailResourcesTest extends TestCase
         $honkio->templates->versions('welcome');
         $this->assertNull($honkio->templates->remove('welcome'));
 
-        $this->assertSame(['name' => 'Welcome', 'variables' => ['firstName' => 'string']], $mock->jsonBody());
+        $this->assertSame(['name' => 'Welcome', 'variables' => [['key' => 'firstName']]], $mock->jsonBody());
         $expected = [
             ['POST', '/v1/email-templates'], ['GET', '/v1/email-templates/welcome'], ['GET', '/v1/email-templates?limit=2'],
             ['PATCH', '/v1/email-templates/welcome'], ['POST', '/v1/email-templates/welcome/publish'],

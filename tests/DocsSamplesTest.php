@@ -23,6 +23,9 @@ final class DocsSamplesTest extends TestCase
     /** @return array<string, string> */
     private static function samples(): array
     {
+        if (!Monorepo::present()) {
+            self::markTestSkipped(Monorepo::skipReason());
+        }
         $source = (string) file_get_contents(self::SAMPLES_FILE);
         self::assertGreaterThan(
             0,
@@ -41,6 +44,9 @@ final class DocsSamplesTest extends TestCase
     /** @return array<string, array{string}> */
     public static function sampleNames(): array
     {
+        if (!Monorepo::present()) {
+            return ['skipped without the monorepo' => ['']];
+        }
         $names = [];
         foreach (array_keys(self::samples()) as $name) {
             $names[$name] = [$name];
@@ -58,6 +64,15 @@ final class DocsSamplesTest extends TestCase
         }
 
         return array_values(array_unique($known));
+    }
+
+    /** @return list<string> the top-level resource properties, from Endpoints::ALL */
+    private static function resources(): array
+    {
+        return array_values(array_unique(array_map(
+            static fn (array $row): string => explode('.', $row[0])[0],
+            Endpoints::ALL,
+        )));
     }
 
     /** @return list<string> */
@@ -109,10 +124,7 @@ final class DocsSamplesTest extends TestCase
             if (! preg_match('/^(\w+)->(\w+)(->\w+)?$/', $call)) {
                 continue;
             }
-            $isResource = in_array(explode('->', $call)[0], ['messages', 'phoneNumbers', 'verify', 'consents', 'consentBatches',
-                'optInConfirmations', 'webhooks', 'emails', 'batch', 'domains', 'suppressions', 'templates',
-                'tollFreeVerifications', 'businessVerification', 'autoTopup', 'topupCapRequests'], true);
-            if (! $isResource) {
+            if (! in_array(explode('->', $call)[0], self::resources(), true)) {
                 continue;
             }
             self::assertTrue(

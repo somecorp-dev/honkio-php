@@ -6,7 +6,8 @@
     "keywords": ["sms", "email", "honkio", "casl", "canada"],
     "homepage": "https://honkio.ca/docs/sdk",
     "support": {
-        "source": "https://github.com/jeffcaldwellca/honkio",
+        "source": "https://github.com/somecorp-dev/honkio-php",
+        "issues": "https://github.com/somecorp-dev/honkio-php/issues",
         "docs": "https://honkio.ca/docs/sdk"
     },
     "require": {

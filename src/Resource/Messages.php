@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Honkio\Resource;
 
+use Honkio\Http\Dates;
 use Honkio\Http\HttpClient;
 
 final class Messages
@@ -34,13 +35,14 @@ final class Messages
     }
 
     /**
-     * A page of messages, newest first.
+     * A page of messages, newest first. `date_from` and `date_to` are dates:
+     * a string `YYYY-MM-DD`, or a DateTimeInterface (sent as its UTC date).
      *
      * @param array<string, mixed> $query
      * @return array<mixed>
      */
     public function list(array $query = []): array
     {
-        return $this->http->callArray('GET', '/v1/messages', [], $query);
+        return $this->http->callArray('GET', '/v1/messages', [], Dates::dateOnly($query, ['date_from', 'date_to']));
     }
 }

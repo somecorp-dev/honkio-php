@@ -20,6 +20,9 @@ final class SpecContractTest extends TestCase
     /** @return array<string, array<string, mixed>> */
     private function paths(): array
     {
+        if (!Monorepo::present()) {
+            $this->markTestSkipped(Monorepo::skipReason());
+        }
         $this->assertFileExists(self::SPEC, 'web/generated/openapi.json is missing; was it moved?');
         $spec = json_decode((string) file_get_contents(self::SPEC), true, 512, JSON_THROW_ON_ERROR);
         $this->assertIsArray($spec);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Honkio\Resource;
 
+use Honkio\Exception\InvalidArgumentException;
 use Honkio\Http\HttpClient;
 
 final class Suppressions
@@ -17,11 +18,17 @@ final class Suppressions
      *
      * @param array<string, mixed> $params
      * @return array<string, mixed>
+     * @throws InvalidArgumentException
      */
     public function create(array $params): array
     {
+        $address = $params['email_address'] ?? null;
+        if (!is_string($address) || $address === '') {
+            throw new InvalidArgumentException('email_address is required; nothing was sent.');
+        }
+
         return $this->http->callArray('POST', '/v1/email-suppressions', [], [], [
-            'email_address' => $params['email_address'] ?? null,
+            'email_address' => $address,
             'reason' => 'manual',
         ]);
     }
