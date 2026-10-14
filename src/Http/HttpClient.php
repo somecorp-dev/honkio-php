@@ -46,7 +46,26 @@ final class HttpClient
         array $query = [],
         ?array $body = null,
         ?string $idempotencyKey = null,
+        bool $bodyIsList = false,
     ): mixed {
+        return $this->execute($method, $template, $pathParams, $query, $body, $idempotencyKey, $bodyIsList)[1];
+    }
+
+    /**
+     * @param array<string, string> $pathParams
+     * @param array<string, mixed> $query
+     * @param array<mixed>|null $body
+     * @return array{int, mixed} the HTTP status and the decoded response
+     */
+    private function execute(
+        string $method,
+        string $template,
+        array $pathParams,
+        array $query,
+        ?array $body,
+        ?string $idempotencyKey,
+        bool $bodyIsList,
+    ): array {
         $headers = [
             'Authorization' => 'Bearer ' . $this->apiKey,
             'Accept' => 'application/json',
@@ -56,10 +75,15 @@ final class HttpClient
         if ($body !== null) {
             $options['headers']['Content-Type'] = 'application/json';
             $normalized = self::normalize($body);
-            $options['body'] = json_encode(
-                $normalized === [] && !array_is_list($body) ? new \stdClass() : $normalized,
-                JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
-            );
+            // The API expects objects: an empty map is {} (a batch body is a list by design).
+            if ($normalized === [] && !$bodyIsList) {
+                $normalized = new \stdClass();
+            }
+            try {
+                $options['body'] = json_encode($normalized, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            } catch (\JsonException $e) {
+                throw new InvalidArgumentException('The request body is not valid UTF-8; nothing was sent.', 0, $e);
+            }
         }
         if ($idempotencyKey !== null && $idempotencyKey !== '') {
             $options['headers']['Idempotency-Key'] = $idempotencyKey;
@@ -67,7 +91,7 @@ final class HttpClient
 
         [$status, $text] = $this->send($method, $this->url($template, $pathParams, $query), $options);
 
-        return ResponseParser::parse($status, $text);
+        return [$status, ResponseParser::parse($status, $text)];
     }
 
     /**
@@ -89,10 +113,11 @@ final class HttpClient
         array $query = [],
         ?array $body = null,
         ?string $idempotencyKey = null,
+        bool $bodyIsList = false,
     ): array {
-        $result = $this->call($method, $template, $pathParams, $query, $body, $idempotencyKey);
+        [$status, $result] = $this->execute($method, $template, $pathParams, $query, $body, $idempotencyKey, $bodyIsList);
         if (!is_array($result)) {
-            throw ApiException::create('application_error', 'The API answered with JSON that is not an object or a list.', 200);
+            throw ApiException::create('application_error', 'The API answered with JSON that is not an object or a list.', $status);
         }
 
         return $result;
@@ -110,9 +135,9 @@ final class HttpClient
      */
     public function callNullableArray(string $method, string $template, array $pathParams = []): ?array
     {
-        $result = $this->call($method, $template, $pathParams);
+        [$status, $result] = $this->execute($method, $template, $pathParams, [], null, null, false);
         if ($result !== null && !is_array($result)) {
-            throw ApiException::create('application_error', 'The API answered with JSON that is not an object or a list.', 200);
+            throw ApiException::create('application_error', 'The API answered with JSON that is not an object or a list.', $status);
         }
 
         return $result;
@@ -190,6 +215,9 @@ final class HttpClient
             if ($value === null) {
                 continue;
             }
+            if (is_array($value) && !array_is_list($value)) {
+                throw new InvalidArgumentException("The query value for $key must be a scalar or a list, not a map; nothing was sent.");
+            }
             foreach (is_array($value) ? $value : [$value] as $item) {
                 $pairs[] = rawurlencode($key) . '=' . rawurlencode(self::queryValue($item));
             }
@@ -236,9 +264,15 @@ final class HttpClient
             if ($item === null) {
                 continue;
             }
-            $out[$key] = in_array($key, self::OPAQUE_KEYS, true) ? $item : self::normalize($item);
+            if (in_array($key, self::OPAQUE_KEYS, true)) {
+                // Always an object, even when empty.
+                $out[$key] = $item === [] ? new \stdClass() : $item;
+            } else {
+                $out[$key] = self::normalize($item);
+            }
         }
 
-        return $out;
+        // A map emptied by null-dropping is still an object.
+        return $out === [] ? new \stdClass() : $out;
     }
 }

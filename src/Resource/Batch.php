@@ -22,6 +22,6 @@ final class Batch
      */
     public function send(array $emailsOrTemplateBatch, ?string $idempotencyKey = null): array
     {
-        return $this->http->callArray('POST', '/v1/emails/batch', [], [], $emailsOrTemplateBatch, $idempotencyKey);
+        return $this->http->callArray('POST', '/v1/emails/batch', [], [], $emailsOrTemplateBatch, $idempotencyKey, true);
     }
 }

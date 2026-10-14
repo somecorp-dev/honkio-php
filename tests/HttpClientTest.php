@@ -154,6 +154,60 @@ final class HttpClientTest extends TestCase
         $client->callRaw('GET', '/v1/emails/received/{id}/raw', ['id' => 'r2']);
     }
 
+    public function testInvalidUtf8BodyIsRefusedBeforeSending(): void
+    {
+        $mock = new MockHttp([new Response(200, [], '{}')]);
+        try {
+            $this->client($mock)->call('POST', '/v1/messages', [], [], ['body' => "caf\xE9"]);
+            $this->fail('expected an exception');
+        } catch (InvalidArgumentException $e) {
+            $this->assertInstanceOf(HonkioException::class, $e);
+            $this->assertInstanceOf(\JsonException::class, $e->getPrevious());
+            $this->assertSame(0, $mock->count());
+        }
+    }
+
+    public function testEmptyMapsAreObjects(): void
+    {
+        $mock = new MockHttp(array_fill(0, 6, new Response(200, [], '{}')));
+        $client = $this->client($mock);
+        $client->call('PUT', '/v1/business-verification', [], [], []);
+        $client->call('POST', '/v1/emails', [], [], ['headers' => [], 'to' => []]);
+        $client->call('POST', '/v1/emails', [], [], ['variables' => [], 'metadata' => []]);
+        $client->call('POST', '/v1/emails', [], [], ['a' => ['b' => null], 'c' => null]);
+        $client->call('POST', '/v1/emails/batch', [], [], [], null, true);
+        $client->call('POST', '/v1/emails', [], [], ['x' => ['y' => ['z' => null]]]);
+
+        $this->assertSame('{}', (string) $mock->request(0)->getBody());
+        $this->assertSame('{"headers":{},"to":[]}', (string) $mock->request(1)->getBody());
+        $this->assertSame('{"variables":{},"metadata":{}}', (string) $mock->request(2)->getBody());
+        $this->assertSame('{"a":{}}', (string) $mock->request(3)->getBody());
+        $this->assertSame('[]', (string) $mock->request(4)->getBody());
+        $this->assertSame('{"x":{"y":{}}}', (string) $mock->request(5)->getBody());
+    }
+
+    public function testAMapAsAQueryValueIsRefused(): void
+    {
+        $mock = new MockHttp([new Response(200, [], '{}')]);
+        try {
+            $this->client($mock)->call('GET', '/v1/emails', [], ['x' => ['a' => 1]]);
+            $this->fail('expected an exception');
+        } catch (InvalidArgumentException) {
+            $this->assertSame(0, $mock->count());
+        }
+    }
+
+    public function testNonObjectSuccessReportsTheRealStatus(): void
+    {
+        $mock = new MockHttp([new Response(201, [], '"text"')]);
+        try {
+            $this->client($mock)->callArray('POST', '/v1/messages', [], [], ['a' => 1]);
+            $this->fail('expected an exception');
+        } catch (\Honkio\Exception\ApiException $e) {
+            $this->assertSame(201, $e->statusCode);
+        }
+    }
+
     public function testTimeoutOptionIsPassed(): void
     {
         $mock = new MockHttp([new Response(200, [], '{}')]);
