@@ -1,0 +1,39 @@
+{
+    "name": "honkio/honkio-php",
+    "description": "Official PHP SDK for HonkIO: Canadian SMS and email, CASL built in.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["sms", "email", "honkio", "casl", "canada"],
+    "homepage": "https://honkio.ca/docs/sdk",
+    "support": {
+        "source": "https://github.com/jeffcaldwellca/honkio",
+        "docs": "https://honkio.ca/docs/sdk"
+    },
+    "require": {
+        "php": ">=8.2",
+        "ext-json": "*",
+        "guzzlehttp/guzzle": "^7.8"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5 || ^11",
+        "phpstan/phpstan": "^1.11 || ^2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Honkio\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Honkio\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "analyse": "phpstan analyse"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable"
+}
