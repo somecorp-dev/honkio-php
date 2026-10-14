@@ -29,7 +29,7 @@ final class EmailResourcesTest extends TestCase
         $this->assertSame(['id' => 'e1'], $result);
         $this->assertRequest($mock, 'POST', '/v1/emails');
         $this->assertSame(
-            ['from' => 'a@b.ca', 'to' => ['c@d.ca'], 'subject' => 'Hi', 'text' => 'Hello', 'headers' => ['X-Order' => '1']],
+            ['from' => 'a@b.ca', 'to' => ['c@d.ca'], 'subject' => 'Hi', 'text' => 'Hello', 'headers' => ['X-Order' => '1'], 'scheduled_at' => null],
             $mock->jsonBody(),
         );
         $this->assertSame('mail-1', $mock->request()->getHeaderLine('Idempotency-Key'));
@@ -146,6 +146,14 @@ final class EmailResourcesTest extends TestCase
         $this->assertSame(['email_address' => 'a@b.ca', 'reason' => 'manual'], $mock->jsonBody());
         $this->assertRequest($mock, 'GET', '/v1/email-suppressions?limit=3', 1);
         $this->assertRequest($mock, 'DELETE', '/v1/email-suppressions/a%40b.ca', 2);
+    }
+
+    public function testTemplatesUpdateCanClearAFieldWithNull(): void
+    {
+        [$honkio, $mock] = MockHttp::honkio([MockHttp::json(200, ['id' => 't1'])]);
+        $honkio->templates->update('tpl', ['html' => null]);
+
+        $this->assertSame('{"html":null}', (string) $mock->request()->getBody());
     }
 
     public function testTemplatesKeepVariablesKeysAsGiven(): void

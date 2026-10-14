@@ -46,7 +46,7 @@ final class HttpClientTest extends TestCase
         $this->assertSame('POST', $request->getMethod());
     }
 
-    public function testNullsAreDroppedFromBodies(): void
+    public function testNullsAreSentInBodies(): void
     {
         $mock = new MockHttp([new Response(200, [], '{}')]);
         $this->client($mock)->call('POST', '/v1/messages', [], [], [
@@ -57,7 +57,7 @@ final class HttpClientTest extends TestCase
         ]);
 
         $this->assertSame(
-            '{"from":"+1","nested":{"a":1},"variables":{"keep":null}}',
+            '{"from":"+1","media_url":null,"nested":{"a":1,"b":null},"variables":{"keep":null}}',
             (string) $mock->request()->getBody(),
         );
     }
@@ -67,7 +67,7 @@ final class HttpClientTest extends TestCase
         $mock = new MockHttp([new Response(200, [], '[]')]);
         $this->client($mock)->call('POST', '/v1/emails/batch', [], [], [['to' => 'a@b.ca', 'x' => null], ['to' => 'c@d.ca']]);
 
-        $this->assertSame('[{"to":"a@b.ca"},{"to":"c@d.ca"}]', (string) $mock->request()->getBody());
+        $this->assertSame('[{"to":"a@b.ca","x":null},{"to":"c@d.ca"}]', (string) $mock->request()->getBody());
     }
 
     public function testDatetimesAreIso8601InBodiesAndQueries(): void
@@ -176,14 +176,14 @@ final class HttpClientTest extends TestCase
         $client->call('POST', '/v1/emails', [], [], ['variables' => [], 'metadata' => []]);
         $client->call('POST', '/v1/emails', [], [], ['a' => ['b' => null], 'c' => null]);
         $client->call('POST', '/v1/emails/batch', [], [], [], null, true);
-        $client->call('POST', '/v1/emails', [], [], ['x' => ['y' => ['z' => null]]]);
+        $client->call('POST', '/v1/emails', [], [], ['x' => ['y' => ['z' => []]]]);
 
         $this->assertSame('{}', (string) $mock->request(0)->getBody());
         $this->assertSame('{"headers":{},"to":[]}', (string) $mock->request(1)->getBody());
         $this->assertSame('{"variables":{},"metadata":{}}', (string) $mock->request(2)->getBody());
-        $this->assertSame('{"a":{}}', (string) $mock->request(3)->getBody());
+        $this->assertSame('{"a":{"b":null},"c":null}', (string) $mock->request(3)->getBody());
         $this->assertSame('[]', (string) $mock->request(4)->getBody());
-        $this->assertSame('{"x":{"y":{}}}', (string) $mock->request(5)->getBody());
+        $this->assertSame('{"x":{"y":{"z":[]}}}', (string) $mock->request(5)->getBody());
     }
 
     public function testAMapAsAQueryValueIsRefused(): void

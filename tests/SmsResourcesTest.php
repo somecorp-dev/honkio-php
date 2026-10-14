@@ -69,7 +69,7 @@ final class SmsResourcesTest extends TestCase
 
         $this->assertSame(['id' => 'msg_1', 'status' => 'queued'], $result);
         $this->assertRequest($mock, 'POST', '/v1/messages');
-        $this->assertSame(['from' => '+14165550100', 'to' => '+16135550123', 'body' => 'Hi'], $mock->jsonBody());
+        $this->assertSame(['from' => '+14165550100', 'to' => '+16135550123', 'body' => 'Hi', 'media_url' => null], $mock->jsonBody());
         $this->assertSame('order-1042', $mock->request()->getHeaderLine('Idempotency-Key'));
     }
 

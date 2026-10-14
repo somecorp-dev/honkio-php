@@ -245,8 +245,10 @@ final class HttpClient
     }
 
     /**
-     * Drops null values from maps and turns datetimes into ISO 8601. The values
-     * under variables, headers and metadata are the caller's own and stay as given.
+     * Turns datetimes into ISO 8601. Null values are kept and sent as JSON null
+     * (the caller clears a nullable field by passing null, and leaves a field
+     * alone by omitting the key). The values under variables, headers and
+     * metadata are the caller's own and stay as given; when empty they are objects.
      */
     private static function normalize(mixed $value): mixed
     {
@@ -261,9 +263,6 @@ final class HttpClient
         }
         $out = [];
         foreach ($value as $key => $item) {
-            if ($item === null) {
-                continue;
-            }
             if (in_array($key, self::OPAQUE_KEYS, true)) {
                 // Always an object, even when empty.
                 $out[$key] = $item === [] ? new \stdClass() : $item;
@@ -272,7 +271,6 @@ final class HttpClient
             }
         }
 
-        // A map emptied by null-dropping is still an object.
-        return $out === [] ? new \stdClass() : $out;
+        return $out;
     }
 }

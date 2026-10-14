@@ -95,7 +95,7 @@ $honkio->emails->send($params, idempotencyKey: 'welcome-user-42');
 
 ## Request shapes
 
-Parameters are arrays with the API's snake_case keys (`scheduled_at`, `is_commercial`, `reply_to`). Keys whose value is `null` are left out. A `DateTimeInterface` is sent as ISO 8601 in UTC. Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=b`). Ids and other path values are separate string arguments: `$honkio->webhooks->update($id, ['active' => false])`. Deletes return `null`.
+Parameters are arrays with the API's snake_case keys (`scheduled_at`, `is_commercial`, `reply_to`). A key you leave out is not sent; a key set to `null` is sent as JSON null, which clears a nullable field (`$honkio->templates->update('welcome', ['html' => null])`). In query parameters `null` means "not given" and is left out. A `DateTimeInterface` is sent as ISO 8601 in UTC. Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=b`). Ids and other path values are separate string arguments: `$honkio->webhooks->update($id, ['active' => false])`. Deletes return `null`.
 
 ## Resources
 
