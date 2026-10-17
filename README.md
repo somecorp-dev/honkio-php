@@ -106,7 +106,7 @@ $noRetries = new Honkio($key, ['max_retries' => 0]);
 
 Never retried: `CARRIER_TIMEOUT` (the message may have gone out: check its status with `messages->get()` before sending again), `DAILY_LIMIT_REACHED`, `FANOUT_LIMIT_REACHED`, `RECIPIENT_RATE_LIMITED`, `SENDING_PAUSED`, `NUMBER_QUEUE_FULL`, and every validation, consent or authentication error.
 
-A burst bigger than a number's rate waits about a minute per retry. For large volumes, pace the sends or spread them over more numbers.
+A local number sends 10 message parts a minute, so a burst bigger than that is spread out at that pace: each refusal says how long until there is room (about 6 seconds per part waiting). For a list, send to a contact group or pace your sends; for real volume, use a verified toll-free number. Do not spread one list across several numbers to go faster: carriers treat that as snowshoeing and it breaks the acceptable use policy.
 
 ### Send limit and number queues
 
