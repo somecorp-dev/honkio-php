@@ -257,7 +257,10 @@ final class HttpClient
      */
     private function sendWithRetries(string $method, string $url, array $options, bool $safeToRepeat, callable $parse): mixed
     {
-        for ($attempt = 0; ; $attempt++) {
+        // while (true), not for (;;): PHPStan 1.x (the lowest supported)
+        // only reads the first as never falling through to a missing return.
+        $attempt = 0;
+        while (true) {
             $retryAfter = null;
             try {
                 [$status, $text, $retryAfter] = $this->send($method, $url, $options);
@@ -270,6 +273,7 @@ final class HttpClient
                 }
             }
             ($this->sleep)($wait);
+            $attempt++;
         }
     }
 
@@ -298,18 +302,17 @@ final class HttpClient
     }
 
     /**
-     * Retry-After (seconds), else details.retry_after_seconds, else
-     * exponential backoff with jitter.
+     * Retry-After (seconds, or an HTTP date), else details.retry_after_seconds,
+     * else exponential backoff with jitter.
      *
      * @param (callable(): float)|null $random a number from 0 to 1
+     * @param float|null $now the current Unix time; defaults to microtime(true)
      */
-    public static function retryDelay(?string $retryAfter, mixed $details, int $attempt, ?callable $random = null): float
+    public static function retryDelay(?string $retryAfter, mixed $details, int $attempt, ?callable $random = null, ?float $now = null): float
     {
-        if ($retryAfter !== null && is_numeric(trim($retryAfter))) {
-            $seconds = (float) trim($retryAfter);
-            if ($seconds >= 0 && is_finite($seconds)) {
-                return $seconds;
-            }
+        $header = self::retryAfterSeconds($retryAfter, $now ?? microtime(true));
+        if ($header !== null) {
+            return $header;
         }
         $given = is_array($details) ? ($details['retry_after_seconds'] ?? null) : null;
         if ((is_int($given) || is_float($given)) && $given >= 0 && is_finite((float) $given)) {
@@ -319,6 +322,34 @@ final class HttpClient
         $r = $random !== null ? $random() : mt_rand() / mt_getrandmax();
 
         return $base / 2 + $r * ($base / 2);
+    }
+
+    /**
+     * A Retry-After header in seconds: delta-seconds, or an HTTP date (the
+     * time until it, 0 once it has passed). Null when it is neither.
+     */
+    private static function retryAfterSeconds(?string $retryAfter, float $now): ?float
+    {
+        $value = $retryAfter === null ? '' : trim($retryAfter);
+        if ($value === '') {
+            return null;
+        }
+        if (is_numeric($value)) {
+            $seconds = (float) $value;
+
+            return $seconds >= 0 && is_finite($seconds) ? $seconds : null;
+        }
+        // IMF-fixdate (what servers send), then the two obsolete forms HTTP still
+        // accepts; asctime pads a one-digit day with a second space.
+        $value = (string) preg_replace('/\s+/', ' ', $value);
+        foreach (['D, d M Y H:i:s \G\M\T', 'l, d-M-y H:i:s \G\M\T', 'D M j H:i:s Y'] as $format) {
+            $at = \DateTimeImmutable::createFromFormat('!' . $format, $value, new \DateTimeZone('UTC'));
+            if ($at !== false) {
+                return max(0.0, $at->getTimestamp() - $now);
+            }
+        }
+
+        return null;
     }
 
     private static function uuid4(): string

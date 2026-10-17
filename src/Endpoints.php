@@ -87,6 +87,7 @@ final class Endpoints
         ['businessVerification', 'save', 'PUT', '/v1/business-verification'],
         ['businessVerification', 'submit', 'POST', '/v1/business-verification/submit'],
         ['autoTopup', 'get', 'GET', '/v1/auto-topup'],
+        ['sendLimit', 'get', 'GET', '/v1/send-limit'],
         ['topupCapRequests', 'create', 'POST', '/v1/account/topup-cap-requests'],
         ['topupCapRequests', 'list', 'GET', '/v1/account/topup-cap-requests'],
     ];

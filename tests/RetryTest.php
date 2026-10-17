@@ -221,6 +221,26 @@ final class RetryTest extends TestCase
         $this->assertSame(1.0, HttpClient::retryDelay(null, null, 2, static fn (): float => 0.0));
     }
 
+    public function testRetryDelayReadsAnHttpDateAsTheTimeUntilItNeverBelowZero(): void
+    {
+        $now = (float) (new \DateTimeImmutable('2026-10-17T12:00:00Z'))->getTimestamp();
+        $this->assertSame(7.0, HttpClient::retryDelay('Sat, 17 Oct 2026 12:00:07 GMT', null, 0, null, $now));
+        $this->assertSame(7.0, HttpClient::retryDelay('Saturday, 17-Oct-26 12:00:07 GMT', null, 0, null, $now));
+        $this->assertSame(7.0, HttpClient::retryDelay('Sat Oct 17 12:00:07 2026', null, 0, null, $now));
+        $this->assertSame(0.0, HttpClient::retryDelay('Sat, 17 Oct 2026 11:59:00 GMT', ['retry_after_seconds' => 9], 0, null, $now));
+        $this->assertSame(9.0, HttpClient::retryDelay('-3', ['retry_after_seconds' => 9], 0, null, $now));
+    }
+
+    public function testARetryAfterHttpDateIsWaitedUntil(): void
+    {
+        $at = gmdate('D, d M Y H:i:s', time() + 5) . ' GMT';
+        $mock = new MockHttp([self::error(429, 'NUMBER_RATE_LIMITED', null, $at), self::sent()]);
+        $this->assertSame(['id' => 'msg_1'], $this->send($this->client($mock)));
+        $this->assertCount(1, $this->waits);
+        $this->assertGreaterThan(3.0, $this->waits[0]);
+        $this->assertLessThanOrEqual(5.0, $this->waits[0]);
+    }
+
     // Idempotency keys
 
     public function testAGeneratedKeyIsSentAndKeptAcrossRetries(): void

@@ -29,7 +29,7 @@ final class HttpClientTest extends TestCase
         $request = $mock->request();
         $this->assertSame('Bearer k', $request->getHeaderLine('Authorization'));
         $this->assertSame('application/json', $request->getHeaderLine('Accept'));
-        $this->assertSame('honkio-php/0.1.0', $request->getHeaderLine('User-Agent'));
+        $this->assertSame('honkio-php/0.2.0', $request->getHeaderLine('User-Agent'));
         $this->assertFalse($request->hasHeader('Content-Type'));
         $this->assertFalse($request->hasHeader('Idempotency-Key'));
         $this->assertSame('https://api.honkio.ca/v1/messages', (string) $request->getUri());

@@ -97,7 +97,7 @@ The client sends a call again when the API refused it only because it should wai
 | `RATE_LIMITED` (429) | on a GET or a send with an idempotency key. Elsewhere it can be the route's own limit, such as one verification start per recipient a minute, where a repeat would send again |
 | `ConnectionException` | on a GET or a send with an idempotency key: the request may have reached the API |
 
-Each retry waits as long as the API's `Retry-After` header (or `details['retry_after_seconds']`) says, or backs off exponentially with jitter when it says nothing. By default a call is retried at most 2 times, and a wait longer than 60 seconds is not waited out: the exception is thrown at once. When retrying does not help, the last exception is thrown, the same as without retries. The client waits with `usleep()`, so a retry blocks the PHP process for the wait.
+Each retry waits as long as the API's `Retry-After` header (seconds, or an HTTP date to wait until) or `details['retry_after_seconds']` says, or backs off exponentially with jitter when it says nothing. By default a call is retried at most 2 times, and a wait longer than 60 seconds is not waited out: the exception is thrown at once. When retrying does not help, the last exception is thrown, the same as without retries. The client waits with `usleep()`, so a retry blocks the PHP process for the wait.
 
 ```php
 $honkio = new Honkio($key, ['max_retries' => 4, 'max_retry_delay' => 30]);
@@ -107,6 +107,19 @@ $noRetries = new Honkio($key, ['max_retries' => 0]);
 Never retried: `CARRIER_TIMEOUT` (the message may have gone out: check its status with `messages->get()` before sending again), `DAILY_LIMIT_REACHED`, `FANOUT_LIMIT_REACHED`, `RECIPIENT_RATE_LIMITED`, `SENDING_PAUSED`, `NUMBER_QUEUE_FULL`, and every validation, consent or authentication error.
 
 A burst bigger than a number's rate waits about a minute per retry. For large volumes, pace the sends or spread them over more numbers.
+
+### Send limit and number queues
+
+`messages->send()` returns the message with `estimated_send_at`: an ISO 8601 estimate of when the carrier should start sending it, from the parts already waiting on the sending number (`null` in test mode and on a retry that returned an earlier send). `sendLimit->get()` shows the rest before a burst: the daily cap and what is left of it, the per-recipient caps, probation, any pause, past volume requests, and `number_queues`, each number's carrier queue.
+
+```php
+$limits = $honkio->sendLimit->get();
+echo $limits['remaining'], ' of ', $limits['daily_limit'], " left today\n";
+foreach ($limits['number_queues'] as $queue) {
+    // parts_per_minute is 10 for a local number; clears_at is null when nothing is waiting.
+    echo $queue['phone_number'], ' ', $queue['queued_parts'], ' ', $queue['parts_per_minute'], ' ', $queue['clears_at'] ?? '-', "\n";
+}
+```
 
 ## Idempotency
 
@@ -130,11 +143,12 @@ Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=
 
 | Property | Methods |
 |---|---|
-| `messages` (SMS) | `send($params, $idempotencyKey)`, `get($id)`, `list($query)` |
+| `messages` (SMS) | `send($params, $idempotencyKey)` (the message plus `estimated_send_at`), `get($id)`, `list($query)` |
 | `phoneNumbers` | `areaCodes()`, `search($query)` (`area_codes` may be a list), `provision($params)` (live keys; charges your balance), `list()`, `get($id)`, `release($id)` |
 | `tollFreeVerifications` | `options()`, `create($params)`, `update($id, $params)`, `submit($id)`, `cancel($id)`, `get($id)`, `list($query)` |
 | `businessVerification` | `get()` (null before a profile is saved), `save($params)`, `submit()` |
 | `autoTopup` | `get()`: settings, saved card summary, pause state. Read-only |
+| `sendLimit` | `get()`: the daily cap and usage, per-recipient caps, probation, any pause, past volume requests, and `number_queues`; see [Send limit and number queues](#send-limit-and-number-queues) |
 | `topupCapRequests` | `create($params)`, `list()` |
 | `optInConfirmations` | `send($params)`, `list($query)` |
 | `verify` | `start($params)`, `check($id, $params)`, `get($id)`, `list($query)` |

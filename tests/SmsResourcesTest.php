@@ -285,13 +285,14 @@ final class SmsResourcesTest extends TestCase
         }
     }
 
-    public function testBusinessVerificationAutoTopupAndTopupCapRequests(): void
+    public function testBusinessVerificationAutoTopupSendLimitAndTopupCapRequests(): void
     {
         [$honkio, $mock] = MockHttp::honkio([
             new Response(200, [], 'null'),
             MockHttp::json(200, ['status' => 'draft']),
             MockHttp::json(200, ['status' => 'pending']),
             MockHttp::json(200, ['enabled' => false]),
+            MockHttp::json(200, ['daily_limit' => 250, 'number_queues' => []]),
             MockHttp::json(200, ['id' => 'r1']),
             MockHttp::json(200, ['data' => []]),
         ]);
@@ -299,12 +300,13 @@ final class SmsResourcesTest extends TestCase
         $honkio->businessVerification->save(['legal_name' => 'Acme']);
         $honkio->businessVerification->submit();
         $honkio->autoTopup->get();
+        $this->assertSame(['daily_limit' => 250, 'number_queues' => []], $honkio->sendLimit->get());
         $honkio->topupCapRequests->create(['requested_cap_cents' => 100000]);
         $honkio->topupCapRequests->list();
 
         $expected = [
             ['GET', '/v1/business-verification'], ['PUT', '/v1/business-verification'],
-            ['POST', '/v1/business-verification/submit'], ['GET', '/v1/auto-topup'],
+            ['POST', '/v1/business-verification/submit'], ['GET', '/v1/auto-topup'], ['GET', '/v1/send-limit'],
             ['POST', '/v1/account/topup-cap-requests'], ['GET', '/v1/account/topup-cap-requests'],
         ];
         foreach ($expected as $i => [$method, $uri]) {

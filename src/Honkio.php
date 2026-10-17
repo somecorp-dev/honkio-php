@@ -18,6 +18,7 @@ use Honkio\Resource\Emails;
 use Honkio\Resource\Messages;
 use Honkio\Resource\OptInConfirmations;
 use Honkio\Resource\PhoneNumbers;
+use Honkio\Resource\SendLimit;
 use Honkio\Resource\Suppressions;
 use Honkio\Resource\Templates;
 use Honkio\Resource\TollFreeVerifications;
@@ -35,7 +36,7 @@ use Honkio\Resource\Webhooks;
  */
 final class Honkio
 {
-    public const VERSION = '0.1.0';
+    public const VERSION = '0.2.0';
     public const DEFAULT_BASE_URL = 'https://api.honkio.ca';
 
     public readonly Emails $emails;
@@ -48,6 +49,7 @@ final class Honkio
     public readonly TollFreeVerifications $tollFreeVerifications;
     public readonly BusinessVerification $businessVerification;
     public readonly AutoTopup $autoTopup;
+    public readonly SendLimit $sendLimit;
     public readonly TopupCapRequests $topupCapRequests;
     public readonly Verify $verify;
     public readonly Consents $consents;
@@ -100,6 +102,7 @@ final class Honkio
         $this->tollFreeVerifications = new TollFreeVerifications($http);
         $this->businessVerification = new BusinessVerification($http);
         $this->autoTopup = new AutoTopup($http);
+        $this->sendLimit = new SendLimit($http);
         $this->topupCapRequests = new TopupCapRequests($http);
         $this->verify = new Verify($http);
         $this->consents = new Consents($http);
