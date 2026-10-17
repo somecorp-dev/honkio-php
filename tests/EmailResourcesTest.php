@@ -101,7 +101,8 @@ final class EmailResourcesTest extends TestCase
         $this->assertRequest($mock, 'POST', '/v1/emails/batch');
         $this->assertSame('batch-1', $mock->request()->getHeaderLine('Idempotency-Key'));
         $this->assertSame([['from' => 'a@b.ca', 'to' => 'c@d.ca', 'subject' => 's', 'text' => 't']], $mock->jsonBody());
-        $this->assertFalse($mock->request(1)->hasHeader('Idempotency-Key'));
+        // Without a key of the caller's, one is generated.
+        $this->assertMatchesRegularExpression('/^[0-9a-f-]{36}$/', $mock->request(1)->getHeaderLine('Idempotency-Key'));
     }
 
     public function testDomains(): void

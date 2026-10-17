@@ -5,7 +5,7 @@ The official PHP SDK for [HonkIO](https://honkio.ca): Canadian SMS and email, wi
 - PHP 8.2 or newer, [Guzzle](https://docs.guzzlephp.org) 7 (any `GuzzleHttp\ClientInterface` can be injected)
 - Requests are associative arrays in the API's own snake_case; responses are decoded associative arrays
 - Errors are exceptions, and every one of them implements `Honkio\Exception\HonkioException`
-- No automatic retries: a send costs money, so retrying is your choice, with an idempotency key
+- Retries what waiting fixes (a number's per-minute sending rate, the carrier asking to slow down), with an idempotency key so a retried send never goes out twice
 - Live sending and live receiving (buying a number, the managed inbound email address, a domain's receiving toggle) need the account owner's phone verified once; test keys skip it
 
 On Laravel? Use [`honkio/laravel`](https://honkio.ca/docs/sdk) for a mail transport and an SMS notification channel.
@@ -43,7 +43,7 @@ try {
 }
 ```
 
-`new Honkio()` with no argument reads `HONKIO_API_KEY`, and throws `InvalidArgumentException` if neither is set. Options: `new Honkio($key, ['base_url' => ..., 'timeout' => 30, 'http_client' => $guzzle])`.
+`new Honkio()` with no argument reads `HONKIO_API_KEY`, and throws `InvalidArgumentException` if neither is set. Options: `new Honkio($key, ['base_url' => ..., 'timeout' => 30, 'http_client' => $guzzle, 'max_retries' => 2, 'max_retry_delay' => 60])`; see [Retries](#retries).
 
 ### Send an email
 
@@ -85,9 +85,34 @@ try {
 
 The general codes and every SMS and email code are listed at <https://honkio.ca/docs/errors>.
 
+## Retries
+
+The client sends a call again when the API refused it only because it should wait:
+
+| `errorCode` | Retried |
+|---|---|
+| `NUMBER_RATE_LIMITED` (429) | always: the sending number already has a minute of message parts waiting at the carrier (a local number sends 10 parts a minute) |
+| `CARRIER_THROTTLED` (503) | always: the carrier asked HonkIO to slow down and did not take the message; nothing was charged |
+| `CARRIER_UNAVAILABLE` (503) | always: the carrier could not be reached; nothing was sent or charged |
+| `RATE_LIMITED` (429) | on a GET or a send with an idempotency key. Elsewhere it can be the route's own limit, such as one verification start per recipient a minute, where a repeat would send again |
+| `ConnectionException` | on a GET or a send with an idempotency key: the request may have reached the API |
+
+Each retry waits as long as the API's `Retry-After` header (or `details['retry_after_seconds']`) says, or backs off exponentially with jitter when it says nothing. By default a call is retried at most 2 times, and a wait longer than 60 seconds is not waited out: the exception is thrown at once. When retrying does not help, the last exception is thrown, the same as without retries. The client waits with `usleep()`, so a retry blocks the PHP process for the wait.
+
+```php
+$honkio = new Honkio($key, ['max_retries' => 4, 'max_retry_delay' => 30]);
+$noRetries = new Honkio($key, ['max_retries' => 0]);
+```
+
+Never retried: `CARRIER_TIMEOUT` (the message may have gone out: check its status with `messages->get()` before sending again), `DAILY_LIMIT_REACHED`, `FANOUT_LIMIT_REACHED`, `RECIPIENT_RATE_LIMITED`, `SENDING_PAUSED`, `NUMBER_QUEUE_FULL`, and every validation, consent or authentication error.
+
+A burst bigger than a number's rate waits about a minute per retry. For large volumes, pace the sends or spread them over more numbers.
+
 ## Idempotency
 
-`messages->send`, `emails->send` and `batch->send` take an optional idempotency key as their last argument and send it as the `Idempotency-Key` header. After a `ConnectionException`, retry with the same key and the send happens at most once.
+`messages->send`, `emails->send` and `batch->send` always send an `Idempotency-Key` header: the key you pass as their last argument, otherwise a generated UUID that stays the same on each retry of that call. The API answers a repeated key with the original result, so a retry can never send or charge twice.
+
+The generated key covers only the client's own retries. If your code sends again after an exception (a queued job that runs again, say), pass your own key, derived from what is being sent (an order id), so the API recognises the repeat.
 
 ```php
 $honkio->emails->send($params, idempotencyKey: 'welcome-user-42');

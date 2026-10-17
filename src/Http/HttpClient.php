@@ -12,17 +12,53 @@ use Honkio\Exception\InvalidArgumentException;
 use Honkio\Honkio;
 
 /**
- * The one place a request is built and sent. Never retries: a send costs
- * money, so retrying is the caller's choice, with an idempotency key.
+ * The one place a request is built and sent. A refusal that waiting fixes,
+ * or a connection error on a request that is safe to repeat, is retried up
+ * to $maxRetries times; a send to a keyed route always carries an
+ * Idempotency-Key, so a retry can never send or charge twice.
  */
 final class HttpClient
 {
+    public const DEFAULT_MAX_RETRIES = 2;
+    public const DEFAULT_MAX_RETRY_DELAY = 60.0;
+
+    /**
+     * The routes that honour Idempotency-Key (api/src/routes/messages and
+     * emails). A call without a key gets a generated one, kept across its retries.
+     */
+    private const KEYED_ROUTES = ['POST /v1/messages', 'POST /v1/emails', 'POST /v1/emails/batch'];
+
+    /** Nothing was sent or charged, and waiting is the fix: safe to retry on any route. */
+    private const RETRY_ALWAYS = ['NUMBER_RATE_LIMITED', 'CARRIER_UNAVAILABLE', 'CARRIER_THROTTLED'];
+
+    /** @var \Closure(float): void */
+    private readonly \Closure $sleep;
+
+    /**
+     * @param int $maxRetries retries after the first attempt; 0 turns retrying off
+     * @param float $maxRetryDelay seconds; a longer wait is not waited out and the error is thrown
+     * @param (\Closure(float): void)|null $sleep how to wait, in seconds; tests pass one that does not
+     *
+     * @throws InvalidArgumentException for a negative $maxRetries or $maxRetryDelay
+     */
     public function __construct(
         private readonly string $apiKey,
         private readonly string $baseUrl,
         private readonly ClientInterface $client,
         private readonly float $timeout = 30.0,
+        private readonly int $maxRetries = self::DEFAULT_MAX_RETRIES,
+        private readonly float $maxRetryDelay = self::DEFAULT_MAX_RETRY_DELAY,
+        ?\Closure $sleep = null,
     ) {
+        if ($maxRetries < 0) {
+            throw new InvalidArgumentException('max_retries must be 0 or more.');
+        }
+        if ($maxRetryDelay < 0 || !is_finite($maxRetryDelay)) {
+            throw new InvalidArgumentException('max_retry_delay must be a number of seconds, 0 or more.');
+        }
+        $this->sleep = $sleep ?? static function (float $seconds): void {
+            usleep((int) round($seconds * 1_000_000));
+        };
     }
 
     /**
@@ -86,13 +122,23 @@ final class HttpClient
                 throw new InvalidArgumentException('The request body is not valid UTF-8; nothing was sent.', 0, $e);
             }
         }
+        // The caller's key wins; otherwise one per call, the same on every retry.
+        if (($idempotencyKey === null || $idempotencyKey === '') && in_array("$method $template", self::KEYED_ROUTES, true)) {
+            $idempotencyKey = self::uuid4();
+        }
         if ($idempotencyKey !== null && $idempotencyKey !== '') {
             $options['headers']['Idempotency-Key'] = $idempotencyKey;
         }
 
-        [$status, $text] = $this->send($method, $this->url($template, $pathParams, $query), $options);
+        $safeToRepeat = $method === 'GET' || isset($options['headers']['Idempotency-Key']);
 
-        return [$status, ResponseParser::parse($status, $text)];
+        return $this->sendWithRetries(
+            $method,
+            $this->url($template, $pathParams, $query),
+            $options,
+            $safeToRepeat,
+            static fn (int $status, string $text): array => [$status, ResponseParser::parse($status, $text)],
+        );
     }
 
     /**
@@ -179,19 +225,114 @@ final class HttpClient
             'User-Agent' => 'honkio-php/' . Honkio::VERSION,
         ]];
 
-        [$status, $text] = $this->send($method, $this->url($template, $pathParams, []), $options);
-        if ($status >= 200 && $status < 300) {
-            return $text;
-        }
+        return $this->sendWithRetries(
+            $method,
+            $this->url($template, $pathParams, []),
+            $options,
+            $method === 'GET',
+            static function (int $status, string $text): string {
+                if ($status >= 200 && $status < 300) {
+                    return $text;
+                }
 
-        ResponseParser::parse($status, $text);
-        // parse() always throws for a non-2xx status.
-        throw ApiException::create('application_error', "HTTP $status", $status);
+                ResponseParser::parse($status, $text);
+                // parse() always throws for a non-2xx status.
+                throw ApiException::create('application_error', "HTTP $status", $status);
+            },
+        );
+    }
+
+    /**
+     * Sends until $parse returns, the error is not worth retrying, the retries
+     * run out or the wait would be longer than allowed; then the last error is
+     * thrown as it is.
+     *
+     * @template T
+     * @param array<string, mixed> $options
+     * @param callable(int, string): T $parse
+     * @return T
+     *
+     * @throws ApiException
+     * @throws ConnectionException
+     */
+    private function sendWithRetries(string $method, string $url, array $options, bool $safeToRepeat, callable $parse): mixed
+    {
+        for ($attempt = 0; ; $attempt++) {
+            $retryAfter = null;
+            try {
+                [$status, $text, $retryAfter] = $this->send($method, $url, $options);
+
+                return $parse($status, $text);
+            } catch (ApiException|ConnectionException $e) {
+                $wait = $this->retryWait($e, $safeToRepeat, $attempt, $retryAfter);
+                if ($wait === null) {
+                    throw $e;
+                }
+            }
+            ($this->sleep)($wait);
+        }
+    }
+
+    /**
+     * Seconds to wait before retrying, or null to throw. RATE_LIMITED is also
+     * a route's own limit (one verify start per recipient a minute), where a
+     * repeat sends again, and a connection error may have reached the API:
+     * both are retried only when repeating is harmless, a GET or a request
+     * with an idempotency key. CARRIER_TIMEOUT is never retried: the message
+     * may have gone out.
+     */
+    private function retryWait(ApiException|ConnectionException $e, bool $safeToRepeat, int $attempt, ?string $retryAfter): ?float
+    {
+        if ($attempt >= $this->maxRetries) {
+            return null;
+        }
+        $retry = $e instanceof ConnectionException
+            ? $safeToRepeat
+            : in_array($e->errorCode, self::RETRY_ALWAYS, true) || ($e->errorCode === 'RATE_LIMITED' && $safeToRepeat);
+        if (!$retry) {
+            return null;
+        }
+        $wait = self::retryDelay($retryAfter, $e instanceof ApiException ? $e->details : null, $attempt);
+
+        return $wait > $this->maxRetryDelay ? null : $wait;
+    }
+
+    /**
+     * Retry-After (seconds), else details.retry_after_seconds, else
+     * exponential backoff with jitter.
+     *
+     * @param (callable(): float)|null $random a number from 0 to 1
+     */
+    public static function retryDelay(?string $retryAfter, mixed $details, int $attempt, ?callable $random = null): float
+    {
+        if ($retryAfter !== null && is_numeric(trim($retryAfter))) {
+            $seconds = (float) trim($retryAfter);
+            if ($seconds >= 0 && is_finite($seconds)) {
+                return $seconds;
+            }
+        }
+        $given = is_array($details) ? ($details['retry_after_seconds'] ?? null) : null;
+        if ((is_int($given) || is_float($given)) && $given >= 0 && is_finite((float) $given)) {
+            return (float) $given;
+        }
+        $base = 0.5 * 2 ** $attempt;
+        $r = $random !== null ? $random() : mt_rand() / mt_getrandmax();
+
+        return $base / 2 + $r * ($base / 2);
+    }
+
+    private static function uuid4(): string
+    {
+        $bytes = random_bytes(16);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
     }
 
     /**
      * @param array<string, mixed> $options
-     * @return array{int, string}
+     * @return array{int, string, ?string} the status, the body and the Retry-After header
      */
     private function send(string $method, string $url, array $options): array
     {
@@ -200,7 +341,11 @@ final class HttpClient
         try {
             $response = $this->client->request($method, $url, $options);
 
-            return [$response->getStatusCode(), (string) $response->getBody()];
+            return [
+                $response->getStatusCode(),
+                (string) $response->getBody(),
+                $response->hasHeader('Retry-After') ? $response->getHeaderLine('Retry-After') : null,
+            ];
         } catch (GuzzleException $e) {
             throw new ConnectionException($e->getMessage(), 0, $e);
         }

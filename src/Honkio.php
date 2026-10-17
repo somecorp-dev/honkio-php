@@ -57,11 +57,15 @@ final class Honkio
 
     /**
      * @param string|null $apiKey Falls back to the HONKIO_API_KEY environment variable.
-     * @param array{base_url?: string, timeout?: float|int, http_client?: ClientInterface} $options
+     * @param array{base_url?: string, timeout?: float|int, http_client?: ClientInterface, max_retries?: int, max_retry_delay?: float|int} $options
      *        base_url defaults to https://api.honkio.ca; timeout (seconds) to 30;
-     *        http_client to a new Guzzle client.
+     *        http_client to a new Guzzle client. max_retries (default 2, 0 turns
+     *        retrying off) is how often a refusal that waiting fixes
+     *        (NUMBER_RATE_LIMITED, CARRIER_THROTTLED, CARRIER_UNAVAILABLE,
+     *        RATE_LIMITED) or a connection error is retried; a wait longer than
+     *        max_retry_delay seconds (default 60) is not waited out.
      *
-     * @throws InvalidArgumentException when there is no API key.
+     * @throws InvalidArgumentException when there is no API key, or a retry option is negative.
      */
     public function __construct(?string $apiKey = null, array $options = [])
     {
@@ -77,7 +81,14 @@ final class Honkio
 
         $baseUrl = rtrim($options['base_url'] ?? self::DEFAULT_BASE_URL, '/');
         $client = $options['http_client'] ?? new Client();
-        $http = new HttpClient($key, $baseUrl, $client, (float) ($options['timeout'] ?? 30.0));
+        $http = new HttpClient(
+            $key,
+            $baseUrl,
+            $client,
+            (float) ($options['timeout'] ?? 30.0),
+            $options['max_retries'] ?? HttpClient::DEFAULT_MAX_RETRIES,
+            (float) ($options['max_retry_delay'] ?? HttpClient::DEFAULT_MAX_RETRY_DELAY),
+        );
 
         $this->emails = new Emails($http);
         $this->batch = new Batch($http);

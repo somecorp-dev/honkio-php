@@ -18,7 +18,7 @@ final class HttpClientTest extends TestCase
 {
     private function client(MockHttp $mock): HttpClient
     {
-        return new HttpClient('k', 'https://api.honkio.ca', $mock->client);
+        return new HttpClient('k', 'https://api.honkio.ca', $mock->client, maxRetries: 0);
     }
 
     public function testSendsTheStandardHeaders(): void
