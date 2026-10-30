@@ -18,27 +18,30 @@ use Honkio\Honkio;
  * - While the access token is unexpired, nothing is sent.
  * - Once it expires, the refresh token is exchanged. New tokens are checked
  *   and returned.
- * - If Honkio can't be reached (a connection error, a timeout, a 5xx, a 429,
- *   an unreadable answer), the session is kept on the old tokens until 24
- *   hours past the access token's expiry, then ended.
+ * - If Honkio can't be reached (a connection error, a timeout, a 5xx, an
+ *   unreadable answer), the session is kept on the old tokens until 24 hours
+ *   past the access token's expiry, then ended. A 408 or 429 says nothing
+ *   about the session either: it is kept for this request the same way, and
+ *   the next request tries again.
  * - If Honkio refuses the refresh (any other 4xx: revoked, blocked, deleted,
  *   removed from the organization, a reused refresh token), it ends at once.
  *
  * Refresh tokens rotate and a reused one revokes the whole session, so two
- * requests must never refresh the same token at the same time. The refresher
- * remembers each refresh's result for a minute in the cache under a hash of
- * the old refresh token, and hands it to a second request that arrives with
- * the same old token; with a cache shared across processes, also hold a lock
- * per session around refresh() (the Laravel package does).
+ * requests must never refresh the same token at the same time. Hold a lock
+ * per session around refresh() (the Laravel package does). The refresher
+ * remembers each refresh's result for DEDUPE_SECONDS in the cache under a hash
+ * of the old refresh token, so a request that waited on that lock gets the new
+ * tokens. The window is kept short: within it, a replayed copy of the old
+ * refresh token gets the new tokens too.
  */
 final class TokenRefresher
 {
     public const OUTAGE_GRACE_SECONDS = 86400;
     public const EXPIRY_SKEW_SECONDS = 30;
-    public const DEDUPE_SECONDS = 60;
+    public const DEDUPE_SECONDS = 2;
 
-    /** Statuses that mean Honkio is not answering right now, as opposed to refusing. */
-    private const UNREACHABLE_STATUSES = [408, 429];
+    /** Statuses that say nothing about the session (a timeout, shedding load): kept, not refused. */
+    private const INCONCLUSIVE_STATUSES = [408, 429];
 
     /** @param \Closure(): int $clock */
     public function __construct(
@@ -109,7 +112,7 @@ final class TokenRefresher
             $body = null;
         }
 
-        if ($status >= 500 || in_array($status, self::UNREACHABLE_STATUSES, true)) {
+        if ($status >= 500 || in_array($status, self::INCONCLUSIVE_STATUSES, true)) {
             return $this->unreachable($tokens, $now);
         }
         if ($status < 200 || $status >= 300) {

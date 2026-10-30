@@ -9,6 +9,7 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use Honkio\Auth\InMemoryCache;
 use Honkio\Auth\RefreshResult;
+use Honkio\Auth\TokenRefresher;
 use Honkio\Auth\TokenSet;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -133,6 +134,7 @@ final class TokenRefresherTest extends TestCase
             '500 server error' => [fn () => MockHttp::json(500, ['error' => 'server_error'])],
             '502 from a proxy' => [fn () => new Response(502, [], '<html>Bad gateway</html>')],
             '503 unavailable' => [fn () => new Response(503)],
+            '408 request timeout' => [fn () => new Response(408)],
             '429 rate limited' => [fn () => MockHttp::json(429, ['error' => 'slow_down'])],
             'unreadable 200' => [fn () => new Response(200, [], '<html>captive portal</html>')],
         ];
@@ -222,6 +224,26 @@ final class TokenRefresherTest extends TestCase
         $this->assertNotNull($second->tokens);
         $this->assertSame($first->tokens->toArray(), $second->tokens->toArray());
         $this->assertSame(3, $mock->count(), 'the old refresh token was sent once');
+    }
+
+    public function testTheNewTokensAreNotHandedToTheOldTokenAfterTheDedupeWindow(): void
+    {
+        $cache = new InMemoryCache(fn (): float => (float) $this->f->now);
+        $mock = new MockHttp([
+            $this->f->discoveryResponse(),
+            $this->tokenResponse(),
+            $this->f->jwksResponse(),
+            MockHttp::json(400, ['error' => 'invalid_grant']),
+        ]);
+        $auth = $this->f->auth($mock, $cache);
+
+        $this->assertSame(RefreshResult::REFRESHED, $auth->refresh($this->expiredSet())->status);
+        $this->f->now += TokenRefresher::DEDUPE_SECONDS;
+        $replayed = $auth->refresh($this->expiredSet());
+
+        $this->assertSame(RefreshResult::ENDED, $replayed->status);
+        $this->assertSame('rejected', $replayed->reason);
+        $this->assertSame(4, $mock->count(), 'the replayed old refresh token went to Honkio');
     }
 
     public function testTokenSetRoundTripsThroughAnArray(): void
