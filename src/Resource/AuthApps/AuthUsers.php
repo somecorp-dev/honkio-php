@@ -86,18 +86,21 @@ final class AuthUsers
     /**
      * Delete users flagged as likely bots, a batch at a time: call it again
      * while the answer's `more` is true. `$createdBefore` (ISO 8601) limits it
-     * to older ones. Returns `deleted` and `more`.
+     * to older ones. Returns `deleted` and `more`. It needs a step-up token
+     * for `auth_users:bulk_delete` (POST /v1/auth/step-up), sent as
+     * X-Step-Up-Token, one per call.
      *
      * @return array<mixed>
      */
-    public function removeLikelyBots(string $appId, ?string $createdBefore = null): array
+    public function removeLikelyBots(string $appId, ?string $createdBefore = null, ?string $stepUpToken = null): array
     {
         $params = ['likely_bot' => true];
         if ($createdBefore !== null) {
             $params['created_before'] = $createdBefore;
         }
+        $headers = $stepUpToken === null || $stepUpToken === '' ? [] : ['X-Step-Up-Token' => $stepUpToken];
 
-        return $this->http->callArray('POST', '/v1/auth-apps/{id}/users/bulk-delete', ['id' => $appId], [], $params);
+        return $this->http->callArray('POST', '/v1/auth-apps/{id}/users/bulk-delete', ['id' => $appId], [], $params, null, false, [], $headers);
     }
 
     /**

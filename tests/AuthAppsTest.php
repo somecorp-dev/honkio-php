@@ -206,7 +206,7 @@ final class AuthAppsTest extends TestCase
         $users->block('a', 'usr_1', false);
         $users->unblock('a', 'usr_1');
         $users->remove('a', 'usr_1');
-        $this->assertSame(['deleted' => 3, 'more' => false], $users->removeLikelyBots('a'));
+        $this->assertSame(['deleted' => 3, 'more' => false], $users->removeLikelyBots('a', null, 'su_bd'));
         $users->sessions('a', 'usr_1');
         $users->signIns('a', 'usr_1');
         $users->revokeSession('a', 'ses_1');
@@ -234,6 +234,7 @@ final class AuthAppsTest extends TestCase
         $this->assertSame('{"name":"Ada","metadata":{}}', (string) $mock->request(2)->getBody());
         $this->assertSame(['reason' => 'spam'], $mock->jsonBody(3));
         $this->assertSame(['likely_bot' => true], $mock->jsonBody(7));
+        $this->assertSame('su_bd', $mock->request(7)->getHeaderLine('X-Step-Up-Token'));
         $this->assertSame('{}', (string) $mock->request(11)->getBody());
         $this->assertSame('su_1', $mock->request(11)->getHeaderLine('X-Step-Up-Token'));
         $this->assertSame('Bearer k', $mock->request(11)->getHeaderLine('Authorization'));

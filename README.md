@@ -237,7 +237,7 @@ $honkio->authApps->organizations->create($app['id'], ['name' => 'Team']);
 | `authApps->plan` | `get`, `change($id, $plan, $dryRun)`, `cancelScheduledChange`, `costs($id, $month)`, `usage` |
 | `authApps->organizations` | `list`, `create`, `get`, `update`, `remove`, `memberships`, `addMembership`, `membership($id, $orgId, $userId)`, `updateMembership`, `removeMembership`, `roles`, `putRole($id, $orgId, $name, $params)` (creates or updates; `createRole` and `updateRole` call it), `removeRole` |
 | `authApps->invitations` | `list`, `create`, `get`, `revoke` |
-| `authApps->users` | `list`, `get`, `update`, `block($id, $userId, $blocked, $reason)`, `unblock`, `remove`, `removeLikelyBots($id, $createdBefore)` (a batch at a time; repeat while `more`), `sessions`, `signIns($id, $userId)`, `revokeSession($id, $sessionId)` |
+| `authApps->users` | `list`, `get`, `update`, `block($id, $userId, $blocked, $reason)`, `unblock`, `remove`, `removeLikelyBots($id, $createdBefore, $stepUpToken)` (an `auth_users:bulk_delete` step-up per call; a batch at a time, repeat while `more`), `sessions`, `signIns($id, $userId)`, `revokeSession($id, $sessionId)` |
 | `authApps->exports` | `create($id, $stepUpToken)` (an `auth_users:export` step-up), `get`, `download($tokenOrUrl)` (a string; the link works once, for 15 minutes) |
 
 `Honkio\Endpoints::NOT_LAUNCHED` lists these routes until launch.
