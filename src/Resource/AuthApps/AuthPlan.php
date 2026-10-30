@@ -26,13 +26,16 @@ final class AuthPlan
     /**
      * Change the plan (`free`, `pro` or `business`). An upgrade applies now; a
      * downgrade is scheduled for the end of the billing cycle, and the response
-     * lists what it turns off.
+     * lists what it turns off. `$dryRun` previews the change and its cost
+     * without making it.
      *
      * @return array<mixed>
      */
-    public function change(string $appId, string $plan): array
+    public function change(string $appId, string $plan, bool $dryRun = false): array
     {
-        return $this->http->callArray('PUT', '/v1/auth-apps/{id}/plan', ['id' => $appId], [], ['plan' => $plan]);
+        $params = $dryRun ? ['plan' => $plan, 'dry_run' => true] : ['plan' => $plan];
+
+        return $this->http->callArray('PUT', '/v1/auth-apps/{id}/plan', ['id' => $appId], [], $params);
     }
 
     /**

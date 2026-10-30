@@ -91,6 +91,7 @@ final class HttpClient
      * @param array<string, mixed> $query
      * @param array<mixed>|null $body
      * @param list<string> $objectKeys
+     * @param array<string, string> $extraHeaders
      * @return array{int, mixed} the HTTP status and the decoded response
      */
     private function execute(
@@ -102,8 +103,11 @@ final class HttpClient
         ?string $idempotencyKey,
         bool $bodyIsList,
         array $objectKeys = [],
+        array $extraHeaders = [],
     ): array {
+        // Extra headers (X-Step-Up-Token) never replace the ones set here.
         $headers = [
+            ...$extraHeaders,
             'Authorization' => 'Bearer ' . $this->apiKey,
             'Accept' => 'application/json',
             'User-Agent' => 'honkio-php/' . Honkio::VERSION,
@@ -148,6 +152,7 @@ final class HttpClient
      * @param array<string, mixed> $query
      * @param array<mixed>|null $body
      * @param list<string> $objectKeys see call()
+     * @param array<string, string> $headers extra request headers, such as X-Step-Up-Token; they never replace Authorization
      * @return array<mixed>
      *
      * @throws ApiException
@@ -163,8 +168,9 @@ final class HttpClient
         ?string $idempotencyKey = null,
         bool $bodyIsList = false,
         array $objectKeys = [],
+        array $headers = [],
     ): array {
-        [$status, $result] = $this->execute($method, $template, $pathParams, $query, $body, $idempotencyKey, $bodyIsList, $objectKeys);
+        [$status, $result] = $this->execute($method, $template, $pathParams, $query, $body, $idempotencyKey, $bodyIsList, $objectKeys, $headers);
         if (!is_array($result)) {
             throw ApiException::create('application_error', 'The API answered with JSON that is not an object or a list.', $status);
         }
@@ -243,9 +249,9 @@ final class HttpClient
     }
 
     /**
-     * Like callArray(), but the request body is raw bytes of the given type
-     * (an image upload) instead of JSON. A PUT replaces the same thing each
-     * time, so it is safe to repeat after a connection error.
+     * Like callArray(), but the request body is multipart/form-data with one
+     * file part (an image upload) instead of JSON. A PUT replaces the same
+     * thing each time, so it is safe to repeat after a connection error.
      *
      * @param array<string, string> $pathParams
      * @return array<mixed>
@@ -254,22 +260,37 @@ final class HttpClient
      * @throws ConnectionException
      * @throws InvalidArgumentException
      */
-    public function callBody(string $method, string $template, array $pathParams, string $body, string $contentType): array
-    {
-        if ($body === '') {
-            throw new InvalidArgumentException('The request body is empty; nothing was sent.');
+    public function callMultipartFile(
+        string $method,
+        string $template,
+        array $pathParams,
+        string $field,
+        string $contents,
+        string $contentType,
+        string $filename,
+    ): array {
+        if ($contents === '') {
+            throw new InvalidArgumentException('The file is empty; nothing was sent.');
         }
         if (preg_match('#^[a-z0-9.+-]+/[a-z0-9.+-]+\z#i', $contentType) !== 1) {
             throw new InvalidArgumentException('The content type must be a MIME type such as image/png; nothing was sent.');
+        }
+        if ($filename === '' || preg_match('/["\\\\\r\n]/', $filename) === 1) {
+            throw new InvalidArgumentException('The file name must not be empty or contain quotes, backslashes or line breaks; nothing was sent.');
         }
         $options = [
             'headers' => [
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Accept' => 'application/json',
                 'User-Agent' => 'honkio-php/' . Honkio::VERSION,
-                'Content-Type' => $contentType,
             ],
-            'body' => $body,
+            // Guzzle builds the body and its Content-Type (with the boundary) from this.
+            'multipart' => [[
+                'name' => $field,
+                'contents' => $contents,
+                'filename' => $filename,
+                'headers' => ['Content-Type' => $contentType],
+            ]],
         ];
 
         return $this->sendWithRetries(
@@ -286,27 +307,6 @@ final class HttpClient
                 return $result;
             },
         );
-    }
-
-    /**
-     * call() for a delete that takes query parameters (a bulk delete).
-     *
-     * @param array<string, string> $pathParams
-     * @param array<string, mixed> $query
-     * @return array<mixed>|null the response body, or null for an empty 204
-     *
-     * @throws ApiException
-     * @throws ConnectionException
-     * @throws InvalidArgumentException
-     */
-    public function callWithQuery(string $method, string $template, array $pathParams, array $query): ?array
-    {
-        [$status, $result] = $this->execute($method, $template, $pathParams, $query, null, null, false);
-        if ($result !== null && !is_array($result)) {
-            throw ApiException::create('application_error', 'The API answered with JSON that is not an object or a list.', $status);
-        }
-
-        return $result;
     }
 
     /**

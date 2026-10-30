@@ -226,19 +226,19 @@ $honkio->authApps->verifyDomain($app['id']);
 // $app['client_secret'] is shown once.
 
 $honkio->authApps->uploadLogo($app['id'], file_get_contents('logo.png'), 'image/png');
-$honkio->authApps->users->block($app['id'], 'usr_...', true, 'spam');
+$honkio->authApps->users->block($app['id'], 'usr_...', reason: 'spam');
 $honkio->authApps->organizations->create($app['id'], ['name' => 'Team']);
 ```
 
 | Property | Methods |
 |---|---|
-| `authApps` | `create`, `list($query)`, `get`, `update`, `remove`, `rotateSecret`, `verifyDomain`, `uploadLogo($id, $bytes, $contentType)`, `signIns($id, $query)`, `signInPolicy`, `updateSignInPolicy` |
-| `authApps->security` | `get`, `update`, `summary`, `blocklist`, `addToBlocklist`, `removeFromBlocklist($id, $entryId)` |
-| `authApps->plan` | `get`, `change($id, $plan)`, `cancelScheduledChange`, `costs($id, $month)`, `usage` |
-| `authApps->organizations` | `list`, `create`, `get`, `update`, `remove`, `memberships`, `addMembership`, `updateMembership`, `removeMembership`, `roles`, `createRole`, `updateRole`, `removeRole` |
-| `authApps->invitations` | `list`, `create`, `revoke` |
-| `authApps->users` | `list`, `get`, `update`, `block($id, $userId, $blocked, $reason)`, `remove`, `removeLikelyBots`, `sessions`, `revokeSession($id, $sessionId)` |
-| `authApps->exports` | `create`, `get`, `download($token)` (a string; the link works once, for 15 minutes) |
+| `authApps` | `create`, `list($query)`, `get`, `update`, `remove`, `rotateSecret`, `verifyDomain`, `uploadLogo($id, $bytes, $contentType)` (sent as multipart/form-data), `removeLogo`, `signIns($id, $query)`, `signInPolicy`, `updateSignInPolicy` |
+| `authApps->security` | `get`, `update`, `summary($id, $window)`, `blocklist`, `addToBlocklist`, `removeFromBlocklist($id, $entryId)` |
+| `authApps->plan` | `get`, `change($id, $plan, $dryRun)`, `cancelScheduledChange`, `costs($id, $month)`, `usage` |
+| `authApps->organizations` | `list`, `create`, `get`, `update`, `remove`, `memberships`, `addMembership`, `membership($id, $orgId, $userId)`, `updateMembership`, `removeMembership`, `roles`, `putRole($id, $orgId, $name, $params)` (creates or updates; `createRole` and `updateRole` call it), `removeRole` |
+| `authApps->invitations` | `list`, `create`, `get`, `revoke` |
+| `authApps->users` | `list`, `get`, `update`, `block($id, $userId, $blocked, $reason)`, `unblock`, `remove`, `removeLikelyBots($id, $createdBefore)` (a batch at a time; repeat while `more`), `sessions`, `signIns($id, $userId)`, `revokeSession($id, $sessionId)` |
+| `authApps->exports` | `create($id, $stepUpToken)` (an `auth_users:export` step-up), `get`, `download($tokenOrUrl)` (a string; the link works once, for 15 minutes) |
 
 `Honkio\Endpoints::NOT_LAUNCHED` lists these routes until launch.
 

@@ -18,18 +18,22 @@ final class AuthExports
     }
 
     /**
-     * Start an export. Poll get() until its status is `ready`.
+     * Start an export. It needs a step-up token for `auth_users:export`
+     * (POST /v1/auth/step-up), sent as X-Step-Up-Token. The answer's
+     * `download_url` is shown only here: keep it, poll get() until the status
+     * is `ready`, then download() it once within 15 minutes.
      *
-     * @param array<string, mixed> $params
      * @return array<mixed>
      */
-    public function create(string $appId, array $params = []): array
+    public function create(string $appId, ?string $stepUpToken = null): array
     {
-        return $this->http->callArray('POST', '/v1/auth-apps/{id}/exports', ['id' => $appId], [], $params);
+        $headers = $stepUpToken === null || $stepUpToken === '' ? [] : ['X-Step-Up-Token' => $stepUpToken];
+
+        return $this->http->callArray('POST', '/v1/auth-apps/{id}/exports', ['id' => $appId], [], [], null, false, [], $headers);
     }
 
     /**
-     * One export and its status; a ready one carries a single-use download link that works for 15 minutes.
+     * One export, its status and counts. The file is downloaded from the link create() returned.
      *
      * @return array<mixed>
      */
@@ -39,10 +43,17 @@ final class AuthExports
     }
 
     /**
-     * Download a ready export by its link's token, as a string. The link works once.
+     * Download a ready export, as a string, by its link's token or the whole
+     * download_url. The link works once.
      */
-    public function download(string $token): string
+    public function download(string $tokenOrUrl): string
     {
+        $token = $tokenOrUrl;
+        if (str_contains($tokenOrUrl, '/')) {
+            $segments = array_values(array_filter(explode('/', explode('?', $tokenOrUrl, 2)[0]), static fn (string $s): bool => $s !== ''));
+            $token = $segments === [] ? '' : $segments[count($segments) - 1];
+        }
+
         return $this->http->callRaw('GET', '/v1/auth-exports/{token}', ['token' => $token]);
     }
 }

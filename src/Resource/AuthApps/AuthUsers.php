@@ -37,8 +37,9 @@ final class AuthUsers
     }
 
     /**
-     * Change a user (`name`, `metadata`, `email`, `phone`). Changing an email
-     * or phone notifies the old one.
+     * Change a user (`name`, `metadata`, `email`, `email_verified`, `phone`,
+     * `phone_verified`, `locale`). Changing an email or phone notifies the old
+     * one, in `locale`.
      *
      * @param array<string, mixed> $params
      * @return array<mixed>
@@ -49,18 +50,29 @@ final class AuthUsers
     }
 
     /**
-     * Block a user (true) or unblock them (false). Blocking ends every session at once.
+     * Block a user, or unblock them (`$blocked = false`). Blocking ends every
+     * session at once and sends user.blocked. Returns the user.
      *
      * @return array<mixed>
      */
     public function block(string $appId, string $userId, bool $blocked = true, ?string $reason = null): array
     {
-        $params = ['blocked' => $blocked];
-        if ($reason !== null) {
-            $params['blocked_reason'] = $reason;
+        if (!$blocked) {
+            return $this->unblock($appId, $userId);
         }
+        $params = $reason === null ? [] : ['reason' => $reason];
 
-        return $this->http->callArray('PATCH', self::USER, ['id' => $appId, 'userId' => $userId], [], $params);
+        return $this->http->callArray('POST', self::USER . '/block', ['id' => $appId, 'userId' => $userId], [], $params);
+    }
+
+    /**
+     * Unblock a user. Returns the user.
+     *
+     * @return array<mixed>
+     */
+    public function unblock(string $appId, string $userId): array
+    {
+        return $this->http->callArray('POST', self::USER . '/unblock', ['id' => $appId, 'userId' => $userId]);
     }
 
     /**
@@ -72,17 +84,24 @@ final class AuthUsers
     }
 
     /**
-     * Delete every user flagged as a likely bot. Returns the API's summary (how many were deleted).
+     * Delete users flagged as likely bots, a batch at a time: call it again
+     * while the answer's `more` is true. `$createdBefore` (ISO 8601) limits it
+     * to older ones. Returns `deleted` and `more`.
      *
-     * @return array<mixed>|null
+     * @return array<mixed>
      */
-    public function removeLikelyBots(string $appId): ?array
+    public function removeLikelyBots(string $appId, ?string $createdBefore = null): array
     {
-        return $this->http->callWithQuery('DELETE', '/v1/auth-apps/{id}/users', ['id' => $appId], ['likely_bot' => true]);
+        $params = ['likely_bot' => true];
+        if ($createdBefore !== null) {
+            $params['created_before'] = $createdBefore;
+        }
+
+        return $this->http->callArray('POST', '/v1/auth-apps/{id}/users/bulk-delete', ['id' => $appId], [], $params);
     }
 
     /**
-     * A user's active sessions.
+     * A user's sessions, newest first (`active`, `limit`, `cursor`).
      *
      * @param array<string, mixed> $query
      * @return array<mixed>
@@ -90,6 +109,17 @@ final class AuthUsers
     public function sessions(string $appId, string $userId, array $query = []): array
     {
         return $this->http->callArray('GET', self::USER . '/sessions', ['id' => $appId, 'userId' => $userId], $query);
+    }
+
+    /**
+     * A user's sign-in history, newest first (`limit`, `cursor`).
+     *
+     * @param array<string, mixed> $query
+     * @return array<mixed>
+     */
+    public function signIns(string $appId, string $userId, array $query = []): array
+    {
+        return $this->http->callArray('GET', self::USER . '/sign-ins', ['id' => $appId, 'userId' => $userId], $query);
     }
 
     /**

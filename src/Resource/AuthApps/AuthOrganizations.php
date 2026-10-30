@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Honkio\Resource\AuthApps;
 
+use Honkio\Exception\InvalidArgumentException;
 use Honkio\Http\HttpClient;
 
 /** `$honkio->authApps->organizations`: organizations, roles and memberships. Needs the `auth_organizations` permission. */
@@ -89,6 +90,16 @@ final class AuthOrganizations
     }
 
     /**
+     * One user's membership.
+     *
+     * @return array<mixed>
+     */
+    public function membership(string $appId, string $orgId, string $userId): array
+    {
+        return $this->http->callArray('GET', self::ORG . '/memberships/{userId}', ['id' => $appId, 'orgId' => $orgId, 'userId' => $userId]);
+    }
+
+    /**
      * Change a member's role (`role`).
      *
      * @param array<string, mixed> $params
@@ -118,25 +129,43 @@ final class AuthOrganizations
     }
 
     /**
-     * Add a role (`name`, optional `two_step_required`).
+     * Create a role, or change it if it exists (`two_step_required`): the API
+     * upserts a role by name.
+     *
+     * @param array<string, mixed> $params
+     * @return array<mixed>
+     */
+    public function putRole(string $appId, string $orgId, string $name, array $params = []): array
+    {
+        return $this->http->callArray('PUT', self::ORG . '/roles/{name}', ['id' => $appId, 'orgId' => $orgId, 'name' => $name], [], $params);
+    }
+
+    /**
+     * Add a role (`name`, optional `two_step_required`). Same as putRole().
      *
      * @param array<string, mixed> $params
      * @return array<mixed>
      */
     public function createRole(string $appId, string $orgId, array $params): array
     {
-        return $this->http->callArray('POST', self::ORG . '/roles', ['id' => $appId, 'orgId' => $orgId], [], $params);
+        $name = $params['name'] ?? null;
+        if (!is_string($name) || $name === '') {
+            throw new InvalidArgumentException('createRole needs a non-empty `name`; nothing was sent.');
+        }
+        unset($params['name']);
+
+        return $this->putRole($appId, $orgId, $name, $params);
     }
 
     /**
-     * Change a role (`two_step_required`).
+     * Change a role (`two_step_required`). Same as putRole().
      *
      * @param array<string, mixed> $params
      * @return array<mixed>
      */
     public function updateRole(string $appId, string $orgId, string $name, array $params): array
     {
-        return $this->http->callArray('PATCH', self::ORG . '/roles/{name}', ['id' => $appId, 'orgId' => $orgId, 'name' => $name], [], $params);
+        return $this->putRole($appId, $orgId, $name, $params);
     }
 
     /**

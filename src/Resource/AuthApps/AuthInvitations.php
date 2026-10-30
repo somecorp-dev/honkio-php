@@ -26,8 +26,9 @@ final class AuthInvitations
 
     /**
      * Invite an email address or mobile number (`email` or `phone`, optional
-     * `organization_id` and `role`). It is accepted by signing in as that
-     * identifier.
+     * `organization_id`, `role`, `redirect_url`, `locale` and `send_email`).
+     * It is accepted by signing in as that identifier. The answer's `url` is
+     * the invitation link; with `send_email` false, share it yourself.
      *
      * @param array<string, mixed> $params
      * @return array<mixed>
@@ -38,10 +39,22 @@ final class AuthInvitations
     }
 
     /**
-     * Revoke an invitation. Returns null.
+     * One invitation and its status (`pending`, `accepted`, `revoked` or `expired`).
+     *
+     * @return array<mixed>
      */
-    public function revoke(string $appId, string $invitationId): null
+    public function get(string $appId, string $invitationId): array
     {
-        return $this->http->callNull('DELETE', '/v1/auth-apps/{id}/invitations/{invitationId}', ['id' => $appId, 'invitationId' => $invitationId]);
+        return $this->http->callArray('GET', '/v1/auth-apps/{id}/invitations/{invitationId}', ['id' => $appId, 'invitationId' => $invitationId]);
+    }
+
+    /**
+     * Revoke an invitation: the link stops working. Returns the revoked invitation.
+     *
+     * @return array<mixed>
+     */
+    public function revoke(string $appId, string $invitationId): array
+    {
+        return $this->http->callArray('DELETE', '/v1/auth-apps/{id}/invitations/{invitationId}', ['id' => $appId, 'invitationId' => $invitationId]);
     }
 }

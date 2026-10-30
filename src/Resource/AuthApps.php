@@ -121,14 +121,27 @@ final class AuthApps
 
     /**
      * Upload the logo shown on the sign-in page: the image's bytes and its
-     * type (image/png, image/jpeg or image/webp). Honkio re-encodes it; SVG is
-     * not accepted.
+     * type (image/png, image/jpeg, image/webp or image/gif), at most 1 MB.
+     * It is sent as multipart/form-data in a part named `logo`. Honkio
+     * re-encodes it; SVG is not accepted. Returns the app.
      *
      * @return array<mixed>
      */
-    public function uploadLogo(string $id, string $image, string $contentType): array
+    public function uploadLogo(string $id, string $image, string $contentType, ?string $filename = null): array
     {
-        return $this->http->callBody('PUT', '/v1/auth-apps/{id}/logo', ['id' => $id], $image, $contentType);
+        $filename ??= 'logo.' . (explode('/', $contentType)[1] ?? 'bin');
+
+        return $this->http->callMultipartFile('PUT', '/v1/auth-apps/{id}/logo', ['id' => $id], 'logo', $image, $contentType, $filename);
+    }
+
+    /**
+     * Remove the logo: the sign-in page goes back to the brand-colour mark. Returns the app.
+     *
+     * @return array<mixed>
+     */
+    public function removeLogo(string $id): array
+    {
+        return $this->http->callArray('DELETE', '/v1/auth-apps/{id}/logo', ['id' => $id]);
     }
 
     /**

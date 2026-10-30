@@ -36,17 +36,20 @@ final class AuthSecurity
     }
 
     /**
-     * The Security tab's counts: blocked sign-ups, challenges, attack mode.
+     * The Security tab's counts: blocked sign-ups, challenges, attack mode,
+     * over `$window` (24h, the default, 7d or 30d).
      *
      * @return array<mixed>
      */
-    public function summary(string $appId): array
+    public function summary(string $appId, ?string $window = null): array
     {
-        return $this->http->callArray('GET', '/v1/auth-apps/{id}/security/summary', ['id' => $appId]);
+        $query = $window === null ? [] : ['window' => $window];
+
+        return $this->http->callArray('GET', '/v1/auth-apps/{id}/security/summary', ['id' => $appId], $query);
     }
 
     /**
-     * The app's blocklist entries.
+     * The app's whole blocklist, newest first (`kind` filters to one kind).
      *
      * @param array<string, mixed> $query
      * @return array<mixed>
