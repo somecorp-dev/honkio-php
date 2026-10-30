@@ -36,13 +36,16 @@ final class HonkioAuth
     private readonly TokenRefresher $refresher;
 
     /**
-     * @param array{issuer?: ?string, client_id?: ?string, client_secret?: ?string, http_client?: ClientInterface, cache?: Cache, leeway?: int, timeout?: float|int, clock?: \Closure(): int} $options
+     * @param array{issuer?: ?string, client_id?: ?string, client_secret?: ?string, http_client?: ClientInterface, cache?: Cache, leeway?: int, timeout?: float|int, clock?: \Closure(): int, remember_refreshes?: bool} $options
      *        issuer is the app's `https://hostname` (no path, no trailing slash
      *        needed); client_secret is for a confidential app (leave it out
      *        for a public one); cache defaults to one that lasts this process;
      *        leeway (seconds, default 60) allows for clock skew; timeout
      *        (seconds, default 10) bounds a refresh, and discovery and key
-     *        fetches use at most 5.
+     *        fetches use at most 5; remember_refreshes (default true) keeps
+     *        each refresh's result in the cache for a few seconds, for a
+     *        request that arrives with the same old refresh token (turn it
+     *        off when you serialise refreshes per session yourself).
      *
      * @throws InvalidArgumentException for a missing or non-https issuer, a missing client id, or no openssl extension
      */
@@ -84,6 +87,7 @@ final class HonkioAuth
             is_string($secret) && $secret !== '' ? $secret : null,
             $clock,
             $timeout,
+            (bool) ($options['remember_refreshes'] ?? true),
         );
     }
 

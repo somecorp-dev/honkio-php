@@ -18,27 +18,34 @@ use Honkio\Honkio;
  * - While the access token is unexpired, nothing is sent.
  * - Once it expires, the refresh token is exchanged. New tokens are checked
  *   and returned.
- * - If Honkio can't be reached (a connection error, a timeout, a 5xx, a 429,
- *   an unreadable answer), the session is kept on the old tokens until 24
- *   hours past the access token's expiry, then ended.
+ * - If Honkio can't be reached (a connection error, a timeout, a 5xx, an
+ *   unreadable answer), the session is kept on the old tokens until 24 hours
+ *   past the access token's expiry, then ended.
+ * - If Honkio answers 429 (shedding load) or 408, it has neither refreshed nor
+ *   refused: the old tokens are kept for this request only, without the
+ *   outage treatment ({@see RefreshResult::busy()}), and the next request
+ *   tries again. Never past the same 24-hour limit.
  * - If Honkio refuses the refresh (any other 4xx: revoked, blocked, deleted,
  *   removed from the organization, a reused refresh token), it ends at once.
  *
  * Refresh tokens rotate and a reused one revokes the whole session, so two
  * requests must never refresh the same token at the same time. The refresher
- * remembers each refresh's result for a minute in the cache under a hash of
- * the old refresh token, and hands it to a second request that arrives with
- * the same old token; with a cache shared across processes, also hold a lock
- * per session around refresh() (the Laravel package does).
+ * remembers each refresh's result for a few seconds ({@see DEDUPE_SECONDS}) in
+ * the cache under a hash of the old refresh token, and hands it to a request
+ * that arrives with the same old token in that window; with a cache shared
+ * across processes, also hold a lock per session around refresh(). Turn the
+ * memo off (the `remember_refreshes` option of {@see HonkioAuth}) when you
+ * serialise refreshes per session yourself, as the Laravel package does.
  */
 final class TokenRefresher
 {
     public const OUTAGE_GRACE_SECONDS = 86400;
     public const EXPIRY_SKEW_SECONDS = 30;
-    public const DEDUPE_SECONDS = 60;
+    /** How long a refresh's result is handed to requests that arrive with the same old refresh token. */
+    public const DEDUPE_SECONDS = 5;
 
-    /** Statuses that mean Honkio is not answering right now, as opposed to refusing. */
-    private const UNREACHABLE_STATUSES = [408, 429];
+    /** Honkio answered but would not handle the refresh now: neither an outage nor a refusal. */
+    private const BUSY_STATUSES = [408, 429];
 
     /** @param \Closure(): int $clock */
     public function __construct(
@@ -50,6 +57,7 @@ final class TokenRefresher
         private readonly ?string $clientSecret,
         private readonly \Closure $clock,
         private readonly float $timeout = 10.0,
+        private readonly bool $remember = true,
     ) {
     }
 
@@ -64,7 +72,7 @@ final class TokenRefresher
         }
 
         $dedupeKey = 'honkio-auth:refreshed:' . hash('sha256', $tokens->refreshToken);
-        $already = $this->cache->get($dedupeKey);
+        $already = $this->remember ? $this->cache->get($dedupeKey) : null;
         if ($already !== null) {
             try {
                 return RefreshResult::refreshed(TokenSet::fromArray($already));
@@ -109,8 +117,11 @@ final class TokenRefresher
             $body = null;
         }
 
-        if ($status >= 500 || in_array($status, self::UNREACHABLE_STATUSES, true)) {
+        if ($status >= 500) {
             return $this->unreachable($tokens, $now);
+        }
+        if (in_array($status, self::BUSY_STATUSES, true)) {
+            return $this->withinLimit($tokens, $now) ? RefreshResult::busy($tokens) : RefreshResult::ended('outage_limit');
         }
         if ($status < 200 || $status >= 300) {
             $error = is_array($body) && is_string($body['error'] ?? null) ? $body['error'] : null;
@@ -124,7 +135,7 @@ final class TokenRefresher
         }
 
         $result = $this->fromResponse($body, $tokens);
-        if ($result->changed() && $result->tokens !== null) {
+        if ($this->remember && $result->changed() && $result->tokens !== null) {
             $this->cache->set($dedupeKey, $result->tokens->toArray(), self::DEDUPE_SECONDS);
         }
 
@@ -169,8 +180,12 @@ final class TokenRefresher
 
     private function unreachable(TokenSet $tokens, int $now): RefreshResult
     {
-        return $now <= $tokens->expiresAt + self::OUTAGE_GRACE_SECONDS
-            ? RefreshResult::kept($tokens)
-            : RefreshResult::ended('outage_limit');
+        return $this->withinLimit($tokens, $now) ? RefreshResult::kept($tokens) : RefreshResult::ended('outage_limit');
+    }
+
+    /** A session never runs on tokens Honkio hasn't refreshed for more than 24 hours past their expiry. */
+    private function withinLimit(TokenSet $tokens, int $now): bool
+    {
+        return $now <= $tokens->expiresAt + self::OUTAGE_GRACE_SECONDS;
     }
 }
