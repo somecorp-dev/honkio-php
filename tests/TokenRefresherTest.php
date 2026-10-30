@@ -7,6 +7,7 @@ namespace Honkio\Tests;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use Honkio\Auth\HonkioAuth;
 use Honkio\Auth\InMemoryCache;
 use Honkio\Auth\RefreshResult;
 use Honkio\Auth\TokenRefresher;
@@ -16,8 +17,9 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * The outage rule (spec, "An outage must never lock users out"): a session is
- * kept while Honkio can't be reached, for at most 24 hours past the access
- * token's expiry; a refresh Honkio refuses ends it at once.
+ * kept while Honkio can't be reached (network error, timeout, 5xx), for at
+ * most 24 hours past the access token's expiry; a refresh Honkio refuses ends
+ * it at once. A 429 or 408 is neither: the old tokens serve that request only.
  */
 final class TokenRefresherTest extends TestCase
 {
@@ -134,8 +136,6 @@ final class TokenRefresherTest extends TestCase
             '500 server error' => [fn () => MockHttp::json(500, ['error' => 'server_error'])],
             '502 from a proxy' => [fn () => new Response(502, [], '<html>Bad gateway</html>')],
             '503 unavailable' => [fn () => new Response(503)],
-            '408 request timeout' => [fn () => new Response(408)],
-            '429 rate limited' => [fn () => MockHttp::json(429, ['error' => 'slow_down'])],
             'unreadable 200' => [fn () => new Response(200, [], '<html>captive portal</html>')],
         ];
     }
@@ -149,9 +149,52 @@ final class TokenRefresherTest extends TestCase
         $result = $this->f->auth($mock)->refresh($set);
 
         $this->assertSame(RefreshResult::KEPT, $result->status);
+        $this->assertSame('unreachable', $result->reason);
+        $this->assertTrue($result->isOffline());
         $this->assertSame($set, $result->tokens);
         $this->assertTrue($result->isActive());
         $this->assertFalse($result->changed());
+    }
+
+    /** @return array<string, array{int}> */
+    public static function busyAnswers(): array
+    {
+        return ['429 too many requests' => [429], '408 request timeout' => [408]];
+    }
+
+    /** A 429 or 408 is neither an outage nor a refusal: the old tokens serve this request, and the next one asks again. */
+    #[DataProvider('busyAnswers')]
+    public function testABusyAnswerKeepsTheTokensForThisRequestOnly(int $status): void
+    {
+        $mock = new MockHttp([
+            $this->f->discoveryResponse(),
+            MockHttp::json($status, ['error' => 'temporarily_unavailable']),
+            MockHttp::json(400, ['error' => 'invalid_grant']),
+        ]);
+        $auth = $this->f->auth($mock);
+        $set = $this->expiredSet(3600);
+
+        $first = $auth->refresh($set);
+        $this->assertSame(RefreshResult::KEPT, $first->status);
+        $this->assertSame('busy', $first->reason);
+        $this->assertFalse($first->isOffline());
+        $this->assertSame($set, $first->tokens);
+
+        // Once Honkio answers, its refusal ends the session at once.
+        $second = $auth->refresh($set);
+        $this->assertSame(RefreshResult::ENDED, $second->status);
+        $this->assertSame('rejected', $second->reason);
+        $this->assertSame(3, $mock->count());
+    }
+
+    #[DataProvider('busyAnswers')]
+    public function testABusyAnswerNeverKeepsTokensPastTheTwentyFourHourLimit(int $status): void
+    {
+        $mock = new MockHttp([$this->f->discoveryResponse(), MockHttp::json($status, ['error' => 'temporarily_unavailable'])]);
+        $result = $this->f->auth($mock)->refresh($this->expiredSet(86401));
+
+        $this->assertSame(RefreshResult::ENDED, $result->status);
+        $this->assertSame('outage_limit', $result->reason);
     }
 
     public function testDiscoveryBeingDownIsAnOutageToo(): void
@@ -244,6 +287,40 @@ final class TokenRefresherTest extends TestCase
         $this->assertSame(RefreshResult::ENDED, $replayed->status);
         $this->assertSame('rejected', $replayed->reason);
         $this->assertSame(4, $mock->count(), 'the replayed old refresh token went to Honkio');
+    }
+
+    /** The memo hands out live tokens to anyone holding the spent refresh token, so it lasts only seconds. */
+    public function testTheOldTokenNoLongerGetsTheNewTokensAfterAFewSeconds(): void
+    {
+        $this->assertLessThanOrEqual(5, TokenRefresher::DEDUPE_SECONDS);
+        $mock = new MockHttp([$this->f->discoveryResponse(), $this->tokenResponse(), $this->f->jwksResponse(), MockHttp::json(400, ['error' => 'invalid_grant'])]);
+        $auth = $this->f->auth($mock);
+        $old = $this->expiredSet();
+
+        $this->assertSame(RefreshResult::REFRESHED, $auth->refresh($old)->status);
+        $this->f->now += TokenRefresher::DEDUPE_SECONDS;
+        $replay = $auth->refresh($old);
+
+        $this->assertSame(RefreshResult::ENDED, $replay->status, 'the replayed token went to Honkio, which refused it');
+        $this->assertSame(4, $mock->count());
+    }
+
+    public function testTheMemoCanBeTurnedOff(): void
+    {
+        $mock = new MockHttp([$this->f->discoveryResponse(), $this->tokenResponse(), $this->f->jwksResponse(), MockHttp::json(400, ['error' => 'invalid_grant'])]);
+        $auth = new HonkioAuth([
+            'issuer' => AuthFixture::ISSUER,
+            'client_id' => AuthFixture::CLIENT_ID,
+            'client_secret' => 'shh',
+            'http_client' => $mock->client,
+            'cache' => new InMemoryCache(fn (): float => (float) $this->f->now),
+            'clock' => fn (): int => $this->f->now,
+            'remember_refreshes' => false,
+        ]);
+
+        $this->assertSame(RefreshResult::REFRESHED, $auth->refresh($this->expiredSet())->status);
+        $this->assertSame(RefreshResult::ENDED, $auth->refresh($this->expiredSet())->status);
+        $this->assertSame(4, $mock->count());
     }
 
     public function testTokenSetRoundTripsThroughAnArray(): void
