@@ -8,6 +8,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
 use Honkio\Exception\InvalidArgumentException;
 use Honkio\Http\HttpClient;
+use Honkio\Resource\AuthApps;
 use Honkio\Resource\AutoTopup;
 use Honkio\Resource\Batch;
 use Honkio\Resource\BusinessVerification;
@@ -36,7 +37,7 @@ use Honkio\Resource\Webhooks;
  */
 final class Honkio
 {
-    public const VERSION = '0.2.0';
+    public const VERSION = '0.3.0';
     public const DEFAULT_BASE_URL = 'https://api.honkio.ca';
 
     public readonly Emails $emails;
@@ -56,6 +57,8 @@ final class Honkio
     public readonly ConsentBatches $consentBatches;
     public readonly OptInConfirmations $optInConfirmations;
     public readonly Webhooks $webhooks;
+    /** Honkio Auth (not available yet): hosted sign-in apps, their users, organizations and settings. */
+    public readonly AuthApps $authApps;
 
     /**
      * @param string|null $apiKey Falls back to the HONKIO_API_KEY environment variable.
@@ -109,5 +112,6 @@ final class Honkio
         $this->consentBatches = new ConsentBatches($http);
         $this->optInConfirmations = new OptInConfirmations($http);
         $this->webhooks = new Webhooks($http);
+        $this->authApps = new AuthApps($http);
     }
 }

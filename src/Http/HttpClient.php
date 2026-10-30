@@ -243,6 +243,73 @@ final class HttpClient
     }
 
     /**
+     * Like callArray(), but the request body is raw bytes of the given type
+     * (an image upload) instead of JSON. A PUT replaces the same thing each
+     * time, so it is safe to repeat after a connection error.
+     *
+     * @param array<string, string> $pathParams
+     * @return array<mixed>
+     *
+     * @throws ApiException
+     * @throws ConnectionException
+     * @throws InvalidArgumentException
+     */
+    public function callBody(string $method, string $template, array $pathParams, string $body, string $contentType): array
+    {
+        if ($body === '') {
+            throw new InvalidArgumentException('The request body is empty; nothing was sent.');
+        }
+        if (preg_match('#^[a-z0-9.+-]+/[a-z0-9.+-]+\z#i', $contentType) !== 1) {
+            throw new InvalidArgumentException('The content type must be a MIME type such as image/png; nothing was sent.');
+        }
+        $options = [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Accept' => 'application/json',
+                'User-Agent' => 'honkio-php/' . Honkio::VERSION,
+                'Content-Type' => $contentType,
+            ],
+            'body' => $body,
+        ];
+
+        return $this->sendWithRetries(
+            $method,
+            $this->url($template, $pathParams, []),
+            $options,
+            $method === 'PUT',
+            static function (int $status, string $text): array {
+                $result = ResponseParser::parse($status, $text);
+                if (!is_array($result)) {
+                    throw ApiException::create('application_error', 'The API answered with JSON that is not an object or a list.', $status);
+                }
+
+                return $result;
+            },
+        );
+    }
+
+    /**
+     * call() for a delete that takes query parameters (a bulk delete).
+     *
+     * @param array<string, string> $pathParams
+     * @param array<string, mixed> $query
+     * @return array<mixed>|null the response body, or null for an empty 204
+     *
+     * @throws ApiException
+     * @throws ConnectionException
+     * @throws InvalidArgumentException
+     */
+    public function callWithQuery(string $method, string $template, array $pathParams, array $query): ?array
+    {
+        [$status, $result] = $this->execute($method, $template, $pathParams, $query, null, null, false);
+        if ($result !== null && !is_array($result)) {
+            throw ApiException::create('application_error', 'The API answered with JSON that is not an object or a list.', $status);
+        }
+
+        return $result;
+    }
+
+    /**
      * Sends until $parse returns, the error is not worth retrying, the retries
      * run out or the wait would be longer than allowed; then the last error is
      * thrown as it is.

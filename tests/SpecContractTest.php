@@ -44,7 +44,7 @@ final class SpecContractTest extends TestCase
     {
         $this->assertGreaterThan(70, count(Endpoints::ALL));
         $client = new Honkio('k');
-        foreach (Endpoints::ALL as [$resource, $method]) {
+        foreach ([...Endpoints::ALL, ...Endpoints::NOT_LAUNCHED] as [$resource, $method]) {
             $target = $client;
             foreach (explode('.', $resource) as $property) {
                 $this->assertTrue(property_exists($target, $property), "No resource property $resource");
@@ -60,7 +60,7 @@ final class SpecContractTest extends TestCase
     public function testEveryPublicResourceMethodIsInTheTable(): void
     {
         $listed = [];
-        foreach (Endpoints::ALL as [$resource, $method]) {
+        foreach ([...Endpoints::ALL, ...Endpoints::NOT_LAUNCHED] as [$resource, $method]) {
             $listed["$resource.$method"] = true;
         }
         // Not routes: verify() is a local helper around Webhook::verify().
@@ -72,6 +72,9 @@ final class SpecContractTest extends TestCase
             $resources[$property->getName()] = $property->getValue($client);
         }
         $resources['emails.received'] = $client->emails->received;
+        foreach ((new \ReflectionObject($client->authApps))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+            $resources['authApps.' . $property->getName()] = $property->getValue($client->authApps);
+        }
         foreach ($resources as $name => $object) {
             foreach ((new \ReflectionObject($object))->getMethods(\ReflectionMethod::IS_PUBLIC) as $m) {
                 if ($m->isConstructor()) {

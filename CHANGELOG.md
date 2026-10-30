@@ -2,6 +2,14 @@
 
 Versions are published to Packagist from a read-only mirror by hand; a version without a date is not published yet.
 
+## 0.3.0
+
+### Added
+
+- Honkio Auth (not available yet: the routes answer 404 until your account is enabled). `$honkio->authApps`: `create`, `list` (cursor pages), `get`, `update` (now also the sign-in methods, `passkey_scope`, `sms_from_number_id`, `send_from_email_domain_id`), `remove`, `rotateSecret`, `verifyDomain`, `uploadLogo($id, $bytes, $contentType)`, `signIns`, `signInPolicy`, `updateSignInPolicy`, and the nested `security`, `plan`, `organizations`, `invitations`, `users` (with `block`, `removeLikelyBots`, `sessions`, `revokeSession`) and `exports` (with `download($token)`). Listed in `Honkio\Endpoints::NOT_LAUNCHED` until launch.
+- `Honkio\Auth\HonkioAuth`, for apps that sign users in with Honkio Auth: `verifyIdToken($jwt, $nonce)` and `verifyAccessToken($jwt)` check an ES256 signature against the app's published keys (cached, refetched when a token names a new key), the exact issuer, the app's client id as audience, the token type (`at+jwt` for access tokens) and the time claims; a failure throws `Honkio\Exception\TokenVerificationException` with a `reason`. `refresh(TokenSet)` applies the outage rule: a session is kept while Honkio can't be reached (a connection error, a timeout, a 5xx, a 429), for at most 24 hours past the access token's expiry, and ends as soon as Honkio refuses the refresh. `tokenSetFromResponse()` and `logoutUrl()` help with the code exchange and sign-out. Keys and discovery live in a `Honkio\Auth\Cache` you can share across requests; signed-in users stay signed in on cached keys during an outage. Needs `ext-openssl`.
+- `Honkio\Exception\IssuerUnavailableException`: the app's issuer could not be reached and nothing usable was cached.
+
 ## 0.2.0 (2026-10-17)
 
 ### Added

@@ -161,6 +161,7 @@ Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=
 | `domains` | `create($params)`, `get($id)`, `list()`, `update($id, $params)`, `verify($id)`, `remove($id)` |
 | `suppressions` | `create(['email_address' => ...])`, `list($query)`, `remove($emailAddress)` |
 | `templates` | `create`, `get($idOrAlias)`, `list`, `update`, `publish`, `rollback($idOrAlias, ['version' => 2])`, `versions`, `remove` |
+| `authApps` | Honkio Auth (not available yet); see [Honkio Auth](#honkio-auth-not-available-yet) |
 
 `Honkio\Endpoints::ALL` lists every route the SDK calls as `[resource, method, HTTP method, path]`.
 
@@ -205,6 +206,84 @@ if ($event['type'] === 'message.delivered') {
 ```
 
 The signature is HMAC-SHA256, keyed with the signing secret as UTF-8 (not hex-decoded), over `"{X-HonkIO-Timestamp}.{raw body}"`. A timestamp more than 300 seconds from now is refused as a possible replay; pass a fourth argument to change that. Header names are matched case-insensitively and a value may be a string or a list of strings, so PSR-7 and Laravel header arrays work as they are. A missing secret throws `InvalidArgumentException`; anything about the headers, signature, timestamp or body throws `SignatureVerificationException`. `Honkio\WebhookEvents::ALL` lists every event a webhook can subscribe to. See <https://honkio.ca/docs/webhooks/signing> for the published test vector.
+
+## Honkio Auth (not available yet)
+
+Honkio Auth is hosted, passwordless sign-in (email code or link, text code, passkeys) on a hostname you own, with users stored in Canada. It is not available yet: its routes answer 404 until your account is enabled.
+
+### Managing apps
+
+`$honkio->authApps` manages apps, their users and settings. It needs a key with the `auth_apps` permission (`auth_users` for users, sessions, sign-in history and exports; `auth_organizations` for organizations and invitations).
+
+```php
+$app = $honkio->authApps->create([
+    'hostname' => 'login.example.ca',
+    'name' => 'Acme',
+    'redirect_uris' => ['https://app.example.ca/auth/callback'],
+]);
+// Publish $app['dns_records'] (a TXT and a CNAME), then:
+$honkio->authApps->verifyDomain($app['id']);
+// $app['client_secret'] is shown once.
+
+$honkio->authApps->uploadLogo($app['id'], file_get_contents('logo.png'), 'image/png');
+$honkio->authApps->users->block($app['id'], 'usr_...', true, 'spam');
+$honkio->authApps->organizations->create($app['id'], ['name' => 'Team']);
+```
+
+| Property | Methods |
+|---|---|
+| `authApps` | `create`, `list($query)`, `get`, `update`, `remove`, `rotateSecret`, `verifyDomain`, `uploadLogo($id, $bytes, $contentType)`, `signIns($id, $query)`, `signInPolicy`, `updateSignInPolicy` |
+| `authApps->security` | `get`, `update`, `summary`, `blocklist`, `addToBlocklist`, `removeFromBlocklist($id, $entryId)` |
+| `authApps->plan` | `get`, `change($id, $plan)`, `cancelScheduledChange`, `costs($id, $month)`, `usage` |
+| `authApps->organizations` | `list`, `create`, `get`, `update`, `remove`, `memberships`, `addMembership`, `updateMembership`, `removeMembership`, `roles`, `createRole`, `updateRole`, `removeRole` |
+| `authApps->invitations` | `list`, `create`, `revoke` |
+| `authApps->users` | `list`, `get`, `update`, `block($id, $userId, $blocked, $reason)`, `remove`, `removeLikelyBots`, `sessions`, `revokeSession($id, $sessionId)` |
+| `authApps->exports` | `create`, `get`, `download($token)` (a string; the link works once, for 15 minutes) |
+
+`Honkio\Endpoints::NOT_LAUNCHED` lists these routes until launch.
+
+### Signing users in
+
+Each app is a standard OpenID Connect provider whose issuer is `https://` plus its hostname: run the authorization code flow with PKCE using any OIDC client (on Laravel, `honkio/laravel` has a Socialite provider). `Honkio\Auth\HonkioAuth` checks the tokens and keeps sessions alive (it needs the `openssl` extension):
+
+```php
+use Honkio\Auth\HonkioAuth;
+use Honkio\Auth\TokenSet;
+use Honkio\Exception\TokenVerificationException;
+
+$auth = new HonkioAuth([
+    'issuer' => 'https://login.example.ca',
+    'client_id' => getenv('HONKIO_AUTH_CLIENT_ID'),
+    'client_secret' => getenv('HONKIO_AUTH_CLIENT_SECRET'), // leave out for a public client
+    'cache' => $cache, // a Honkio\Auth\Cache shared across requests (APCu, Redis)
+]);
+
+// Your API: check the bearer token.
+try {
+    $claims = $auth->verifyAccessToken($bearerToken); // sub, sid, scope, org_id, ...
+} catch (TokenVerificationException $e) {
+    http_response_code(401); // $e->reason says why
+}
+
+// After the code exchange: check the tokens (with the nonce you sent) and keep them server-side.
+$_SESSION['honkio'] = $auth->tokenSetFromResponse($tokenResponse, $nonce)->toArray();
+
+// On each request: refresh when needed.
+$result = $auth->refresh(TokenSet::fromArray($_SESSION['honkio']));
+if (!$result->isActive()) {
+    unset($_SESSION['honkio']); // signed out: the refresh was refused, or Honkio was down for too long
+} elseif ($result->changed()) {
+    $_SESSION['honkio'] = $result->tokens->toArray();
+}
+```
+
+Every check is local to one app: the signature must come from the app's published ES256 keys, `iss` must be exactly the app's issuer, `aud` the app's client id, and an access token must be typed `at+jwt`, so a token for another app never passes.
+
+**Outages.** Users already signed in stay signed in while Honkio is down. Tokens are checked against cached keys (a fetched copy is used for 5 minutes and kept for a week). `refresh()` returns `kept` when Honkio can't be reached (a connection error, a timeout, a 5xx or a 429) and keeps the session on its current tokens for at most 24 hours past the access token's expiry, then `ended` (`outage_limit`). A refresh Honkio refuses (the session was revoked, the user blocked or deleted, or removed from the organization) is `ended` (`rejected`) at once. New sign-ins need Honkio to be up.
+
+**Refresh tokens rotate**, and reusing an old one ends the whole session. Two requests must not refresh the same token at once: `refresh()` remembers each result for a minute in the cache and hands it to a second request carrying the same old token, and with several PHP processes you should also hold a lock per session around it. Keep tokens in server-side sessions only, never in a cookie the browser can read or in logs (`var_dump` of a `TokenSet` redacts them).
+
+`logoutUrl($idToken, $postLogoutRedirectUri, $state)` is where to send the browser after ending your own session.
 
 ## Development
 

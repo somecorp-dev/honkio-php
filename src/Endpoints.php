@@ -91,4 +91,64 @@ final class Endpoints
         ['topupCapRequests', 'create', 'POST', '/v1/account/topup-cap-requests'],
         ['topupCapRequests', 'list', 'GET', '/v1/account/topup-cap-requests'],
     ];
+
+    /**
+     * Honkio Auth routes: not available yet, so the public OpenAPI document
+     * leaves them out. tests/AuthEndpointsTest.php checks them against the API
+     * source instead, and fails once one appears in the public spec, so the
+     * launch moves them into ALL.
+     *
+     * @var list<array{string, string, string, string}>
+     */
+    public const NOT_LAUNCHED = [
+        ['authApps', 'create', 'POST', '/v1/auth-apps'],
+        ['authApps', 'list', 'GET', '/v1/auth-apps'],
+        ['authApps', 'get', 'GET', '/v1/auth-apps/{id}'],
+        ['authApps', 'update', 'PATCH', '/v1/auth-apps/{id}'],
+        ['authApps', 'remove', 'DELETE', '/v1/auth-apps/{id}'],
+        ['authApps', 'rotateSecret', 'POST', '/v1/auth-apps/{id}/rotate-secret'],
+        ['authApps', 'verifyDomain', 'POST', '/v1/auth-apps/{id}/domain/verify'],
+        ['authApps', 'uploadLogo', 'PUT', '/v1/auth-apps/{id}/logo'],
+        ['authApps', 'signIns', 'GET', '/v1/auth-apps/{id}/sign-ins'],
+        ['authApps', 'signInPolicy', 'GET', '/v1/auth-apps/{id}/sign-in-policy'],
+        ['authApps', 'updateSignInPolicy', 'PATCH', '/v1/auth-apps/{id}/sign-in-policy'],
+        ['authApps.security', 'get', 'GET', '/v1/auth-apps/{id}/security'],
+        ['authApps.security', 'update', 'PATCH', '/v1/auth-apps/{id}/security'],
+        ['authApps.security', 'summary', 'GET', '/v1/auth-apps/{id}/security/summary'],
+        ['authApps.security', 'blocklist', 'GET', '/v1/auth-apps/{id}/security/blocklist'],
+        ['authApps.security', 'addToBlocklist', 'POST', '/v1/auth-apps/{id}/security/blocklist'],
+        ['authApps.security', 'removeFromBlocklist', 'DELETE', '/v1/auth-apps/{id}/security/blocklist/{entryId}'],
+        ['authApps.plan', 'get', 'GET', '/v1/auth-apps/{id}/plan'],
+        ['authApps.plan', 'change', 'PUT', '/v1/auth-apps/{id}/plan'],
+        ['authApps.plan', 'cancelScheduledChange', 'DELETE', '/v1/auth-apps/{id}/plan/scheduled'],
+        ['authApps.plan', 'costs', 'GET', '/v1/auth-apps/{id}/costs'],
+        ['authApps.plan', 'usage', 'GET', '/v1/auth-apps/{id}/usage'],
+        ['authApps.organizations', 'list', 'GET', '/v1/auth-apps/{id}/organizations'],
+        ['authApps.organizations', 'create', 'POST', '/v1/auth-apps/{id}/organizations'],
+        ['authApps.organizations', 'get', 'GET', '/v1/auth-apps/{id}/organizations/{orgId}'],
+        ['authApps.organizations', 'update', 'PATCH', '/v1/auth-apps/{id}/organizations/{orgId}'],
+        ['authApps.organizations', 'remove', 'DELETE', '/v1/auth-apps/{id}/organizations/{orgId}'],
+        ['authApps.organizations', 'memberships', 'GET', '/v1/auth-apps/{id}/organizations/{orgId}/memberships'],
+        ['authApps.organizations', 'addMembership', 'POST', '/v1/auth-apps/{id}/organizations/{orgId}/memberships'],
+        ['authApps.organizations', 'updateMembership', 'PATCH', '/v1/auth-apps/{id}/organizations/{orgId}/memberships/{userId}'],
+        ['authApps.organizations', 'removeMembership', 'DELETE', '/v1/auth-apps/{id}/organizations/{orgId}/memberships/{userId}'],
+        ['authApps.organizations', 'roles', 'GET', '/v1/auth-apps/{id}/organizations/{orgId}/roles'],
+        ['authApps.organizations', 'createRole', 'POST', '/v1/auth-apps/{id}/organizations/{orgId}/roles'],
+        ['authApps.organizations', 'updateRole', 'PATCH', '/v1/auth-apps/{id}/organizations/{orgId}/roles/{name}'],
+        ['authApps.organizations', 'removeRole', 'DELETE', '/v1/auth-apps/{id}/organizations/{orgId}/roles/{name}'],
+        ['authApps.invitations', 'list', 'GET', '/v1/auth-apps/{id}/invitations'],
+        ['authApps.invitations', 'create', 'POST', '/v1/auth-apps/{id}/invitations'],
+        ['authApps.invitations', 'revoke', 'DELETE', '/v1/auth-apps/{id}/invitations/{invitationId}'],
+        ['authApps.users', 'list', 'GET', '/v1/auth-apps/{id}/users'],
+        ['authApps.users', 'get', 'GET', '/v1/auth-apps/{id}/users/{userId}'],
+        ['authApps.users', 'update', 'PATCH', '/v1/auth-apps/{id}/users/{userId}'],
+        ['authApps.users', 'block', 'PATCH', '/v1/auth-apps/{id}/users/{userId}'],
+        ['authApps.users', 'remove', 'DELETE', '/v1/auth-apps/{id}/users/{userId}'],
+        ['authApps.users', 'removeLikelyBots', 'DELETE', '/v1/auth-apps/{id}/users'],
+        ['authApps.users', 'sessions', 'GET', '/v1/auth-apps/{id}/users/{userId}/sessions'],
+        ['authApps.users', 'revokeSession', 'DELETE', '/v1/auth-apps/{id}/sessions/{sessionId}'],
+        ['authApps.exports', 'create', 'POST', '/v1/auth-apps/{id}/exports'],
+        ['authApps.exports', 'get', 'GET', '/v1/auth-apps/{id}/exports/{exportId}'],
+        ['authApps.exports', 'download', 'GET', '/v1/auth-exports/{token}'],
+    ];
 }
