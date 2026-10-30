@@ -72,7 +72,10 @@ final class AuthAppsTest extends TestCase
         $this->assertSame('Bearer k', $r->getHeaderLine('Authorization'));
         $body = (string) $r->getBody();
         $this->assertStringContainsString('Content-Disposition: form-data; name="logo"; filename="acme.png"', $body);
-        $this->assertStringContainsString("Content-Type: image/png\r\n\r\n" . $png . "\r\n", $body);
+        // The logo part's headers (in any order; Guzzle also adds Content-Length)
+        // carry the image type, and the part's contents are the image bytes.
+        $this->assertSame(1, preg_match('#\r\n((?:[^\r\n]+\r\n)+)\r\n' . preg_quote($png, '#') . '\r\n--#', $body, $m));
+        $this->assertContains('Content-Type: image/png', explode("\r\n", rtrim($m[1], "\r\n")));
         $this->assertSame('DELETE /v1/auth-apps/app_1/logo', $this->line($mock, 1));
     }
 
@@ -226,7 +229,7 @@ final class AuthAppsTest extends TestCase
             'POST /v1/auth-apps/a/exports',
             'GET /v1/auth-apps/a/exports/exp_1',
             'GET /v1/auth-exports/tok_1',
-        ], array_map(fn (int $i): string => $this->line($mock, $i), range(0, 14)));
+        ], array_map(fn (int $i): string => $this->line($mock, $i), range(0, 13)));
         // metadata is the caller's own map: empty is {}.
         $this->assertSame('{"name":"Ada","metadata":{}}', (string) $mock->request(2)->getBody());
         $this->assertSame(['reason' => 'spam'], $mock->jsonBody(3));
