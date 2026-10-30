@@ -8,7 +8,7 @@ The official PHP SDK for [HonkIO](https://honkio.ca): Canadian SMS and email, wi
 - Retries what waiting fixes (a number's per-minute sending rate, the carrier asking to slow down), with an idempotency key so a retried send never goes out twice
 - Live sending and live receiving (buying a number, the managed inbound email address, a domain's receiving toggle) need the account owner's phone verified once; test keys skip it
 
-On Laravel? Use [`honkio/laravel`](https://honkio.ca/docs/sdk) for a mail transport and an SMS notification channel.
+On Laravel? Use [`honkio/laravel`](https://honkio.ca/docs/sdk) for a mail transport, an SMS notification channel and Honkio Auth sign-in (a Socialite provider, a guard and middleware).
 
 ## Install
 
