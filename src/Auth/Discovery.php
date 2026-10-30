@@ -27,6 +27,7 @@ final class Discovery
         private readonly Cache $cache,
         private readonly \Closure $clock,
         private readonly float $timeout = 5.0,
+        private readonly ?OutageBreaker $breaker = null,
     ) {
     }
 
@@ -50,7 +51,8 @@ final class Discovery
         $now = ($this->clock)();
         $doc = is_array($cached['doc'] ?? null) ? $cached['doc'] : null;
         $fetchedAt = is_int($cached['fetched_at'] ?? null) ? $cached['fetched_at'] : 0;
-        if ($doc !== null && $now - $fetchedAt < self::FRESH_SECONDS) {
+        // While the issuer looks down (see OutageBreaker), an older copy is used without waiting on it.
+        if ($doc !== null && ($now - $fetchedAt < self::FRESH_SECONDS || $this->breaker?->paused() === true)) {
             /** @var array<string, mixed> $doc */
             return $doc;
         }

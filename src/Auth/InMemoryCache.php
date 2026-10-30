@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Honkio\Auth;
 
 /** A {@see Cache} that lasts as long as this object (one PHP process or request). */
-final class InMemoryCache implements Cache
+final class InMemoryCache implements DeletableCache
 {
     /** @var array<string, array{array<mixed>, float}> */
     private array $items = [];
@@ -33,6 +33,11 @@ final class InMemoryCache implements Cache
     public function set(string $key, array $value, int $ttlSeconds): void
     {
         $this->items[$key] = [$value, $this->now() + max(0, $ttlSeconds)];
+    }
+
+    public function delete(string $key): void
+    {
+        unset($this->items[$key]);
     }
 
     private function now(): float

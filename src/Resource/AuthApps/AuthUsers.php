@@ -123,6 +123,27 @@ final class AuthUsers
     }
 
     /**
+     * A user's passkeys: public metadata only, in `data`. A passkey's `usable`
+     * is false when it was made under a passkey scope the app no longer uses.
+     *
+     * @return array<mixed>
+     */
+    public function passkeys(string $appId, string $userId): array
+    {
+        return $this->http->callArray('GET', self::USER . '/passkeys', ['id' => $appId, 'userId' => $userId]);
+    }
+
+    /**
+     * Remove one of a user's passkeys. The user is told at their email
+     * address, their sessions end, and user.updated is sent with changes
+     * `["passkeys"]`. Needs `auth_users` with delete. Returns null.
+     */
+    public function removePasskey(string $appId, string $userId, string $passkeyId): null
+    {
+        return $this->http->callNull('DELETE', self::USER . '/passkeys/{passkeyId}', ['id' => $appId, 'userId' => $userId, 'passkeyId' => $passkeyId]);
+    }
+
+    /**
      * End one session. Its refresh token stops working at once. Returns null.
      */
     public function revokeSession(string $appId, string $sessionId): null

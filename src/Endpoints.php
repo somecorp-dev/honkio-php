@@ -152,6 +152,8 @@ final class Endpoints
         ['authApps.users', 'removeLikelyBots', 'POST', '/v1/auth-apps/{id}/users/bulk-delete'],
         ['authApps.users', 'sessions', 'GET', '/v1/auth-apps/{id}/users/{userId}/sessions'],
         ['authApps.users', 'signIns', 'GET', '/v1/auth-apps/{id}/users/{userId}/sign-ins'],
+        ['authApps.users', 'passkeys', 'GET', '/v1/auth-apps/{id}/users/{userId}/passkeys'],
+        ['authApps.users', 'removePasskey', 'DELETE', '/v1/auth-apps/{id}/users/{userId}/passkeys/{passkeyId}'],
         ['authApps.users', 'revokeSession', 'DELETE', '/v1/auth-apps/{id}/sessions/{sessionId}'],
         ['authApps.exports', 'create', 'POST', '/v1/auth-apps/{id}/exports'],
         ['authApps.exports', 'get', 'GET', '/v1/auth-apps/{id}/exports/{exportId}'],

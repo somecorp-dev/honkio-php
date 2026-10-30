@@ -6,6 +6,7 @@ namespace Honkio\Auth;
 
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
+use Honkio\Exception\ApiException;
 use Honkio\Exception\InvalidArgumentException;
 use Honkio\Exception\IssuerUnavailableException;
 use Honkio\Exception\TokenVerificationException;
@@ -27,6 +28,10 @@ use Honkio\Honkio;
  *   tries again. Never past the same 24-hour limit.
  * - If Honkio refuses the refresh (any other 4xx: revoked, blocked, deleted,
  *   removed from the organization, a reused refresh token), it ends at once.
+ * - Once {@see OutageBreaker::TRIP_SESSIONS} different sessions in a row
+ *   could not reach this app's issuer, refreshes for this app keep their
+ *   sessions without calling Honkio for {@see OutageBreaker::PAUSE_SECONDS}
+ *   ({@see OutageBreaker}; the pause is per app, kept in the cache).
  *
  * Refresh tokens rotate and a reused one revokes the whole session, so two
  * requests must never refresh the same token at the same time. The refresher
@@ -47,6 +52,11 @@ final class TokenRefresher
     /** Honkio answered but would not handle the refresh now: neither an outage nor a refusal. */
     private const BUSY_STATUSES = [408, 429];
 
+    /** The memo: a hash of the old refresh token => the tokens its refresh returned. */
+    private const MEMO_PREFIX = 'honkio-auth:refreshed:';
+    /** A hash of the new refresh token => the hash of the one it replaced, so revoke() finds the memo entry that hands it out. */
+    private const MEMO_FROM_PREFIX = 'honkio-auth:refreshed-from:';
+
     /** @param \Closure(): int $clock */
     public function __construct(
         private readonly Discovery $discovery,
@@ -58,6 +68,7 @@ final class TokenRefresher
         private readonly \Closure $clock,
         private readonly float $timeout = 10.0,
         private readonly bool $remember = true,
+        private readonly ?OutageBreaker $breaker = null,
     ) {
     }
 
@@ -71,55 +82,47 @@ final class TokenRefresher
             return RefreshResult::ended('no_refresh_token');
         }
 
-        $dedupeKey = 'honkio-auth:refreshed:' . hash('sha256', $tokens->refreshToken);
+        $session = hash('sha256', $tokens->refreshToken);
+        $dedupeKey = self::MEMO_PREFIX . $session;
         $already = $this->remember ? $this->cache->get($dedupeKey) : null;
         if ($already !== null) {
             try {
                 return RefreshResult::refreshed(TokenSet::fromArray($already));
             } catch (InvalidArgumentException) {
-                // not ours; refresh as usual
+                // not ours (or a revoked entry); refresh as usual
             }
+        }
+
+        // This app's issuer looks down: keep the session without waiting on it.
+        if ($this->breaker?->paused() === true) {
+            return $this->unreachable($tokens, $now);
         }
 
         try {
             $tokenEndpoint = (string) $this->discovery->get()['token_endpoint'];
         } catch (IssuerUnavailableException) {
-            return $this->unreachable($tokens, $now);
-        }
-
-        $headers = ['Accept' => 'application/json', 'User-Agent' => 'honkio-php/' . Honkio::VERSION];
-        $form = ['grant_type' => 'refresh_token', 'refresh_token' => $tokens->refreshToken];
-        if ($this->clientSecret !== null && $this->clientSecret !== '') {
-            // client_secret_basic: each part form-encoded, then base64 (RFC 6749 2.3.1).
-            $headers['Authorization'] = 'Basic ' . base64_encode(urlencode($this->clientId) . ':' . urlencode($this->clientSecret));
-        } else {
-            $form['client_id'] = $this->clientId;
+            return $this->down($tokens, $now, $session);
         }
 
         try {
-            $response = $this->http->request('POST', $tokenEndpoint, [
-                'headers' => $headers,
-                'form_params' => $form,
-                'http_errors' => false,
-                'allow_redirects' => false,
-                'timeout' => $this->timeout,
-                'connect_timeout' => min($this->timeout, 5.0),
-            ]);
+            $response = $this->post($tokenEndpoint, ['grant_type' => 'refresh_token', 'refresh_token' => $tokens->refreshToken]);
         } catch (GuzzleException) {
-            return $this->unreachable($tokens, $now);
+            return $this->down($tokens, $now, $session);
         }
 
         $status = $response->getStatusCode();
-        $body = null;
-        try {
-            $body = json_decode((string) $response->getBody(), true, 32, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            $body = null;
-        }
+        $body = self::decode($response->getBody()->__toString());
 
         if ($status >= 500) {
-            return $this->unreachable($tokens, $now);
+            return $this->down($tokens, $now, $session);
         }
+        // A 2xx we can't read is a broken proxy or Honkio, not a refusal. If
+        // the refresh token was in fact spent, the next try is refused.
+        if ($status >= 200 && $status < 300 && (!is_array($body) || !is_string($body['access_token'] ?? null) || $body['access_token'] === '')) {
+            return $this->down($tokens, $now, $session);
+        }
+        // Honkio answered: whatever it said, it is up.
+        $this->breaker?->answered();
         if (in_array($status, self::BUSY_STATUSES, true)) {
             return $this->withinLimit($tokens, $now) ? RefreshResult::busy($tokens) : RefreshResult::ended('outage_limit');
         }
@@ -128,15 +131,14 @@ final class TokenRefresher
 
             return RefreshResult::ended('rejected', $error);
         }
-        // A 2xx we can't read is a broken proxy or Honkio, not a refusal. If
-        // the refresh token was in fact spent, the next try is refused.
-        if (!is_array($body) || !is_string($body['access_token'] ?? null) || $body['access_token'] === '') {
-            return $this->unreachable($tokens, $now);
-        }
 
         $result = $this->fromResponse($body, $tokens);
         if ($this->remember && $result->changed() && $result->tokens !== null) {
             $this->cache->set($dedupeKey, $result->tokens->toArray(), self::DEDUPE_SECONDS);
+            if ($result->tokens->refreshToken !== null) {
+                // So revoke() of the new refresh token also forgets this entry.
+                $this->cache->set(self::MEMO_FROM_PREFIX . hash('sha256', $result->tokens->refreshToken), ['from' => $session], self::DEDUPE_SECONDS);
+            }
         }
 
         return $result;
@@ -176,6 +178,109 @@ final class TokenRefresher
             $subject,
             $scope,
         ));
+    }
+
+    /**
+     * Ends the session at Honkio (RFC 7009, for sign-out) and first forgets
+     * the refresh memo for it: the entry under this refresh token, and the
+     * one that hands this token to a request still holding the token it
+     * replaced. Succeeds whether or not Honkio knew the token.
+     *
+     * @throws InvalidArgumentException for an empty token
+     * @throws IssuerUnavailableException when Honkio can't be reached, or answers 5xx, 408 or 429
+     * @throws ApiException when Honkio refuses (401 invalid_client: check the client id and secret)
+     */
+    public function revoke(string $refreshToken): void
+    {
+        if ($refreshToken === '') {
+            throw new InvalidArgumentException('revoke() needs the refresh token to revoke.');
+        }
+        $this->forget($refreshToken);
+
+        $config = $this->discovery->get();
+        $endpoint = is_string($config['revocation_endpoint'] ?? null) ? $config['revocation_endpoint'] : $this->discovery->issuer() . '/revoke';
+        try {
+            $response = $this->post($endpoint, ['token' => $refreshToken, 'token_type_hint' => 'refresh_token']);
+        } catch (GuzzleException $e) {
+            throw new IssuerUnavailableException('Could not reach the revocation endpoint: ' . $e->getMessage(), 0, $e);
+        }
+        $status = $response->getStatusCode();
+        if ($status >= 200 && $status < 300) {
+            return;
+        }
+        if ($status >= 500 || in_array($status, self::BUSY_STATUSES, true)) {
+            throw new IssuerUnavailableException("The revocation endpoint answered HTTP $status.");
+        }
+        $body = self::decode($response->getBody()->__toString());
+        $error = is_array($body) && is_string($body['error'] ?? null) && $body['error'] !== '' ? $body['error'] : 'revoke_failed';
+        $description = is_array($body) && is_string($body['error_description'] ?? null) ? $body['error_description'] : "Honkio refused to revoke the token (HTTP $status).";
+
+        throw ApiException::create($error, $description, $status, $body);
+    }
+
+    /** Forgets the refresh memo for this refresh token (see {@see revoke()}). */
+    public function forget(string $refreshToken): void
+    {
+        $session = hash('sha256', $refreshToken);
+        $from = $this->cache->get(self::MEMO_FROM_PREFIX . $session);
+        $keys = [self::MEMO_PREFIX . $session, self::MEMO_FROM_PREFIX . $session];
+        if (is_string($from['from'] ?? null) && preg_match('/^[0-9a-f]{64}$/', $from['from']) === 1) {
+            $keys[] = self::MEMO_PREFIX . $from['from'];
+        }
+        foreach ($keys as $key) {
+            if ($this->cache instanceof DeletableCache) {
+                $this->cache->delete($key);
+            } else {
+                // A cache without delete(): an empty value that expires at once reads as missing.
+                $this->cache->set($key, [], 0);
+            }
+        }
+    }
+
+    /**
+     * POSTs a form to one of the issuer's endpoints with this client's
+     * authentication: client_secret_basic for a confidential client, the
+     * client id in the body for a public one.
+     *
+     * @param array<string, string> $form
+     *
+     * @throws GuzzleException
+     */
+    private function post(string $url, array $form): \Psr\Http\Message\ResponseInterface
+    {
+        $headers = ['Accept' => 'application/json', 'User-Agent' => 'honkio-php/' . Honkio::VERSION];
+        if ($this->clientSecret !== null && $this->clientSecret !== '') {
+            // client_secret_basic: each part form-encoded, then base64 (RFC 6749 2.3.1).
+            $headers['Authorization'] = 'Basic ' . base64_encode(urlencode($this->clientId) . ':' . urlencode($this->clientSecret));
+        } else {
+            $form['client_id'] = $this->clientId;
+        }
+
+        return $this->http->request('POST', $url, [
+            'headers' => $headers,
+            'form_params' => $form,
+            'http_errors' => false,
+            'allow_redirects' => false,
+            'timeout' => $this->timeout,
+            'connect_timeout' => min($this->timeout, 5.0),
+        ]);
+    }
+
+    private static function decode(string $raw): mixed
+    {
+        try {
+            return json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+    }
+
+    /** Honkio could not be reached for this session: count it toward the breaker, keep the session. */
+    private function down(TokenSet $tokens, int $now, string $session): RefreshResult
+    {
+        $this->breaker?->unreachable($session);
+
+        return $this->unreachable($tokens, $now);
     }
 
     private function unreachable(TokenSet $tokens, int $now): RefreshResult
