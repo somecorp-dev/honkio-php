@@ -21,7 +21,8 @@ final class AuthExports
      * Start an export. It needs a step-up token for `auth_users:export`
      * (POST /v1/auth/step-up), sent as X-Step-Up-Token. The answer's
      * `download_url` is shown only here: keep it, poll get() until the status
-     * is `ready`, then download() it once within 15 minutes.
+     * is `ready`, then download() it once within 15 minutes. Lost it? latest()
+     * answers a fresh one, with the same step-up.
      *
      * @return array<mixed>
      */
@@ -40,6 +41,24 @@ final class AuthExports
     public function get(string $appId, string $exportId): array
     {
         return $this->http->callArray('GET', '/v1/auth-apps/{id}/exports/{exportId}', ['id' => $appId, 'exportId' => $exportId]);
+    }
+
+    /**
+     * The app's newest export, whatever its status (a NotFoundException when
+     * it has none). While it is `ready`, the key that requested it, passing an
+     * `auth_users:export` step-up token (the same step-up as create()), also
+     * gets a fresh single-use `download_url`: it replaces the earlier link,
+     * which stops working, and expires with the export. Without the step-up,
+     * from any other key, or in any other status, `download_url` is null and
+     * the earlier link keeps working.
+     *
+     * @return array<mixed>
+     */
+    public function latest(string $appId, ?string $stepUpToken = null): array
+    {
+        $headers = $stepUpToken === null || $stepUpToken === '' ? [] : ['X-Step-Up-Token' => $stepUpToken];
+
+        return $this->http->callArray('GET', '/v1/auth-apps/{id}/exports/latest', ['id' => $appId], [], null, null, false, [], $headers);
     }
 
     /**

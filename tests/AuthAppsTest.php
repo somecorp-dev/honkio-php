@@ -240,6 +240,38 @@ final class AuthAppsTest extends TestCase
         $this->assertSame('Bearer k', $mock->request(11)->getHeaderLine('Authorization'));
     }
 
+    public function testHostnameChangeRoutes(): void
+    {
+        $moving = ['id' => 'app_1', 'hostname' => 'login.acme.ca', 'pending_hostname' => 'auth.acme.ca', 'hostname_change' => ['passkeys_stop_working' => 0]];
+        [$honkio, $mock] = MockHttp::honkio([MockHttp::json(200, $moving), MockHttp::json(200, ['id' => 'app_1', 'pending_hostname' => null])]);
+
+        $this->assertSame($moving, $honkio->authApps->update('app_1', ['hostname' => 'auth.acme.ca']));
+        $this->assertSame(['id' => 'app_1', 'pending_hostname' => null], $honkio->authApps->cancelHostnameChange('app_1'));
+
+        $this->assertSame([
+            'PATCH /v1/auth-apps/app_1',
+            'DELETE /v1/auth-apps/app_1/hostname-change',
+        ], array_map(fn (int $i): string => $this->line($mock, $i), range(0, 1)));
+        $this->assertSame(['hostname' => 'auth.acme.ca'], $mock->jsonBody(0));
+    }
+
+    public function testTheLatestExportSendsTheStepUpOnlyWhenGiven(): void
+    {
+        $ready = ['id' => 'aex_1', 'status' => 'ready', 'download_url' => 'https://api.honkio.ca/v1/auth-exports/tok_2'];
+        [$honkio, $mock] = MockHttp::honkio([MockHttp::json(200, $ready), MockHttp::json(200, [...$ready, 'download_url' => null])]);
+
+        $this->assertSame($ready, $honkio->authApps->exports->latest('a', 'su_1'));
+        $this->assertNull($honkio->authApps->exports->latest('a')['download_url']);
+
+        $this->assertSame([
+            'GET /v1/auth-apps/a/exports/latest',
+            'GET /v1/auth-apps/a/exports/latest',
+        ], array_map(fn (int $i): string => $this->line($mock, $i), range(0, 1)));
+        $this->assertSame('su_1', $mock->request(0)->getHeaderLine('X-Step-Up-Token'));
+        $this->assertFalse($mock->request(1)->hasHeader('X-Step-Up-Token'));
+        $this->assertSame('', (string) $mock->request(0)->getBody());
+    }
+
     public function testUserPasskeyRoutes(): void
     {
         $passkeys = ['data' => [['id' => 'pk_1', 'name' => 'iPhone', 'usable' => true]]];

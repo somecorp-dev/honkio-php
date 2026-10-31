@@ -228,17 +228,22 @@ $honkio->authApps->verifyDomain($app['id']);
 $honkio->authApps->uploadLogo($app['id'], file_get_contents('logo.png'), 'image/png');
 $honkio->authApps->users->block($app['id'], 'usr_...', reason: 'spam');
 $honkio->authApps->organizations->create($app['id'], ['name' => 'Team']);
+
+// Move the app to another hostname you own: publish the new records, then verifyDomain() again.
+$moving = $honkio->authApps->update($app['id'], ['hostname' => 'auth.example.ca']);
+// $moving['hostname_change'] says what the switch does to passkeys; changed your mind?
+$honkio->authApps->cancelHostnameChange($app['id']);
 ```
 
 | Property | Methods |
 |---|---|
-| `authApps` | `create`, `list($query)`, `get`, `update`, `remove`, `rotateSecret`, `verifyDomain`, `uploadLogo($id, $bytes, $contentType)` (sent as multipart/form-data), `removeLogo`, `signIns($id, $query)`, `signInPolicy`, `updateSignInPolicy` |
+| `authApps` | `create`, `list($query)`, `get`, `update` (a `hostname` sent on its own moves the app to a new hostname once it is proven), `cancelHostnameChange`, `remove`, `rotateSecret`, `verifyDomain`, `uploadLogo($id, $bytes, $contentType)` (sent as multipart/form-data), `removeLogo`, `signIns($id, $query)`, `signInPolicy`, `updateSignInPolicy` |
 | `authApps->security` | `get`, `update`, `summary($id, $window)`, `blocklist`, `addToBlocklist`, `removeFromBlocklist($id, $entryId)` |
 | `authApps->plan` | `get`, `change($id, $plan, $dryRun)`, `cancelScheduledChange`, `costs($id, $month)`, `usage` |
 | `authApps->organizations` | `list`, `create`, `get`, `update`, `remove`, `memberships`, `addMembership`, `membership($id, $orgId, $userId)`, `updateMembership`, `removeMembership`, `roles`, `putRole($id, $orgId, $name, $params)` (creates or updates; `createRole` and `updateRole` call it), `removeRole` |
 | `authApps->invitations` | `list`, `create`, `get`, `revoke` |
 | `authApps->users` | `list`, `get`, `update`, `block($id, $userId, $blocked, $reason)`, `unblock`, `remove`, `removeLikelyBots($id, $createdBefore, $stepUpToken)` (an `auth_users:bulk_delete` step-up per call; a batch at a time, repeat while `more`), `sessions`, `signIns($id, $userId)`, `passkeys($id, $userId)` (public metadata; `usable` is false for one made under a passkey scope the app no longer uses), `removePasskey($id, $userId, $passkeyId)` (tells the user, ends their sessions; needs `auth_users` with delete), `revokeSession($id, $sessionId)` |
-| `authApps->exports` | `create($id, $stepUpToken)` (an `auth_users:export` step-up), `get`, `download($tokenOrUrl)` (a string; the link works once, for 15 minutes) |
+| `authApps->exports` | `create($id, $stepUpToken)` (an `auth_users:export` step-up), `get`, `latest($id, $stepUpToken)` (the newest export; with an `auth_users:export` step-up, a fresh download link for the key that requested it), `download($tokenOrUrl)` (a string; the link works once, for 15 minutes) |
 
 `Honkio\Endpoints::NOT_LAUNCHED` lists these routes until launch.
 

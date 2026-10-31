@@ -106,6 +106,7 @@ final class Endpoints
         ['authApps', 'get', 'GET', '/v1/auth-apps/{id}'],
         ['authApps', 'update', 'PATCH', '/v1/auth-apps/{id}'],
         ['authApps', 'remove', 'DELETE', '/v1/auth-apps/{id}'],
+        ['authApps', 'cancelHostnameChange', 'DELETE', '/v1/auth-apps/{id}/hostname-change'],
         ['authApps', 'rotateSecret', 'POST', '/v1/auth-apps/{id}/rotate-secret'],
         ['authApps', 'verifyDomain', 'POST', '/v1/auth-apps/{id}/domain/verify'],
         ['authApps', 'uploadLogo', 'PUT', '/v1/auth-apps/{id}/logo'],
@@ -156,6 +157,7 @@ final class Endpoints
         ['authApps.users', 'removePasskey', 'DELETE', '/v1/auth-apps/{id}/users/{userId}/passkeys/{passkeyId}'],
         ['authApps.users', 'revokeSession', 'DELETE', '/v1/auth-apps/{id}/sessions/{sessionId}'],
         ['authApps.exports', 'create', 'POST', '/v1/auth-apps/{id}/exports'],
+        ['authApps.exports', 'latest', 'GET', '/v1/auth-apps/{id}/exports/latest'],
         ['authApps.exports', 'get', 'GET', '/v1/auth-apps/{id}/exports/{exportId}'],
         ['authApps.exports', 'download', 'GET', '/v1/auth-exports/{token}'],
     ];

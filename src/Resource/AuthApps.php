@@ -83,12 +83,33 @@ final class AuthApps
      * Change an app: name, brand colour, redirect URIs, sign-in methods,
      * `passkey_scope`, `sms_from_number_id`, `send_from_email_domain_id`.
      *
+     * A `hostname` is sent on its own: it moves the app to a new hostname you
+     * own, keeping the same users, client id and secret. The app keeps serving
+     * on its current hostname while the new one waits in `pending_hostname`
+     * until its DNS records check out ({@see verifyDomain()}) and its
+     * certificate is active; then the issuer changes and every session ends.
+     * The answer's `hostname_change` says what the switch does to passkeys.
+     * Cancel it with {@see cancelHostnameChange()}.
+     *
      * @param array<string, mixed> $params
      * @return array<mixed>
      */
     public function update(string $id, array $params): array
     {
         return $this->http->callArray('PATCH', '/v1/auth-apps/{id}', ['id' => $id], [], $params);
+    }
+
+    /**
+     * Drop the hostname the app was moving to (and its certificate). The app
+     * keeps its current hostname, issuer, sessions and passkeys. Returns the
+     * app. A NotFoundException when no change is waiting, including one that
+     * has already switched.
+     *
+     * @return array<mixed>
+     */
+    public function cancelHostnameChange(string $id): array
+    {
+        return $this->http->callArray('DELETE', '/v1/auth-apps/{id}/hostname-change', ['id' => $id]);
     }
 
     /**
