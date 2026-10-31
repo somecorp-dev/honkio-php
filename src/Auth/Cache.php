@@ -11,6 +11,10 @@ namespace Honkio\Auth;
  * the default, {@see InMemoryCache}, lasts one PHP process.
  *
  * The refresh entries hold tokens: use a store only your servers can read.
+ *
+ * So that {@see HonkioAuth::revoke()} can delete entries, implement
+ * {@see DeletableCache}, which extends this interface; a cache that only
+ * implements this one keeps working.
  */
 interface Cache
 {

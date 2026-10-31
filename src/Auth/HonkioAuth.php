@@ -25,6 +25,7 @@ use Honkio\Exception\TokenVerificationException;
  * ]);
  * $claims = $auth->verifyAccessToken($bearerToken);
  * $result = $auth->refresh(TokenSet::fromArray($_SESSION['honkio']));
+ * $auth->revoke($refreshToken); // sign-out
  * ```
  */
 final class HonkioAuth
@@ -75,8 +76,10 @@ final class HonkioAuth
 
         $this->issuer = $issuer;
         $this->clientId = $clientId;
-        $this->discovery = new Discovery($issuer, $http, $cache, $clock, $fetchTimeout);
-        $keys = new KeySet($this->discovery, $http, $cache, $clock, $fetchTimeout);
+        // The outage pause is this app's alone: keyed by its issuer and client id in the shared cache.
+        $breaker = new OutageBreaker($cache, $issuer, $clientId, $clock);
+        $this->discovery = new Discovery($issuer, $http, $cache, $clock, $fetchTimeout, $breaker);
+        $keys = new KeySet($this->discovery, $http, $cache, $clock, $fetchTimeout, $breaker);
         $this->verifier = new TokenVerifier($issuer, $clientId, $keys, $clock, $leeway);
         $this->refresher = new TokenRefresher(
             $this->discovery,
@@ -88,6 +91,7 @@ final class HonkioAuth
             $clock,
             $timeout,
             (bool) ($options['remember_refreshes'] ?? true),
+            $breaker,
         );
     }
 
@@ -145,6 +149,23 @@ final class HonkioAuth
     public function refresh(TokenSet $tokens): RefreshResult
     {
         return $this->refresher->refresh($tokens);
+    }
+
+    /**
+     * Ends the session at Honkio, for sign-out: revokes the refresh token at
+     * the app's revocation endpoint (RFC 7009), so it and the session's
+     * access tokens stop being refreshed. Before calling Honkio it deletes
+     * the refresh memo for this token from the cache, so a request still
+     * carrying the token this one replaced is not handed it. Succeeds whether
+     * or not Honkio knew the token.
+     *
+     * @throws InvalidArgumentException for an empty token
+     * @throws IssuerUnavailableException when Honkio can't be reached, or answers 5xx, 408 or 429 (the memo is forgotten anyway)
+     * @throws \Honkio\Exception\ApiException when Honkio refuses the client (401 invalid_client)
+     */
+    public function revoke(string $refreshToken): void
+    {
+        $this->refresher->revoke($refreshToken);
     }
 
     /**

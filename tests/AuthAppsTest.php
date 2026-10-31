@@ -240,6 +240,22 @@ final class AuthAppsTest extends TestCase
         $this->assertSame('Bearer k', $mock->request(11)->getHeaderLine('Authorization'));
     }
 
+    public function testUserPasskeyRoutes(): void
+    {
+        $passkeys = ['data' => [['id' => 'pk_1', 'name' => 'iPhone', 'usable' => true]]];
+        [$honkio, $mock] = MockHttp::honkio([MockHttp::json(200, $passkeys), new Response(204)]);
+        $users = $honkio->authApps->users;
+
+        $this->assertSame($passkeys, $users->passkeys('a', 'usr_1'));
+        $this->assertNull($users->removePasskey('a', 'usr_1', 'pk/1'));
+
+        $this->assertSame([
+            'GET /v1/auth-apps/a/users/usr_1/passkeys',
+            'DELETE /v1/auth-apps/a/users/usr_1/passkeys/pk%2F1',
+        ], array_map(fn (int $i): string => $this->line($mock, $i), range(0, 1)));
+        $this->assertSame('Bearer k', $mock->request(1)->getHeaderLine('Authorization'));
+    }
+
     public function testErrorsAreTheUsualExceptions(): void
     {
         [$honkio] = MockHttp::honkio([MockHttp::json(404, ['code' => 'NOT_FOUND', 'message' => 'Not found', 'statusCode' => 404])]);

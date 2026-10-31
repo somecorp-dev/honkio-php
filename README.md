@@ -237,7 +237,7 @@ $honkio->authApps->organizations->create($app['id'], ['name' => 'Team']);
 | `authApps->plan` | `get`, `change($id, $plan, $dryRun)`, `cancelScheduledChange`, `costs($id, $month)`, `usage` |
 | `authApps->organizations` | `list`, `create`, `get`, `update`, `remove`, `memberships`, `addMembership`, `membership($id, $orgId, $userId)`, `updateMembership`, `removeMembership`, `roles`, `putRole($id, $orgId, $name, $params)` (creates or updates; `createRole` and `updateRole` call it), `removeRole` |
 | `authApps->invitations` | `list`, `create`, `get`, `revoke` |
-| `authApps->users` | `list`, `get`, `update`, `block($id, $userId, $blocked, $reason)`, `unblock`, `remove`, `removeLikelyBots($id, $createdBefore, $stepUpToken)` (an `auth_users:bulk_delete` step-up per call; a batch at a time, repeat while `more`), `sessions`, `signIns($id, $userId)`, `revokeSession($id, $sessionId)` |
+| `authApps->users` | `list`, `get`, `update`, `block($id, $userId, $blocked, $reason)`, `unblock`, `remove`, `removeLikelyBots($id, $createdBefore, $stepUpToken)` (an `auth_users:bulk_delete` step-up per call; a batch at a time, repeat while `more`), `sessions`, `signIns($id, $userId)`, `passkeys($id, $userId)` (public metadata; `usable` is false for one made under a passkey scope the app no longer uses), `removePasskey($id, $userId, $passkeyId)` (tells the user, ends their sessions; needs `auth_users` with delete), `revokeSession($id, $sessionId)` |
 | `authApps->exports` | `create($id, $stepUpToken)` (an `auth_users:export` step-up), `get`, `download($tokenOrUrl)` (a string; the link works once, for 15 minutes) |
 
 `Honkio\Endpoints::NOT_LAUNCHED` lists these routes until launch.
@@ -279,9 +279,24 @@ if (!$result->isActive()) {
 
 Every check is local to one app: the signature must come from the app's published ES256 keys, `iss` must be exactly the app's issuer, `aud` the app's client id, and an access token must be typed `at+jwt`, so a token for another app never passes.
 
-**Outages.** Users already signed in stay signed in while Honkio is down. Tokens are checked against cached keys (a fetched copy is used for 5 minutes and kept for a week). `refresh()` returns `kept` (reason `unreachable`, `isOffline()` true) when Honkio can't be reached (a connection error, a timeout or a 5xx) and keeps the session on its current tokens for at most 24 hours past the access token's expiry, then `ended` (`outage_limit`). A 429 or 408 from Honkio is neither an outage nor a refusal: `refresh()` returns `kept` with reason `busy`, so the current tokens serve that request only and the next request asks again, within the same 24-hour limit. A refresh Honkio refuses (the session was revoked, the user blocked or deleted, or removed from the organization) is `ended` (`rejected`) at once. New sign-ins need Honkio to be up.
+**Outages.** Users already signed in stay signed in while Honkio is down. Tokens are checked against cached keys (a fetched copy is used for 5 minutes and kept for a week). `refresh()` returns `kept` (reason `unreachable`, `isOffline()` true) when Honkio can't be reached (a connection error, a timeout or a 5xx) and keeps the session on its current tokens for at most 24 hours past the access token's expiry, then `ended` (`outage_limit`). A 429 or 408 from Honkio is neither an outage nor a refusal: `refresh()` returns `kept` with reason `busy`, so the current tokens serve that request only and the next request asks again, within the same 24-hour limit. A refresh Honkio refuses (the session was revoked, the user blocked or deleted, or removed from the organization) is `ended` (`rejected`) at once. Once 3 different sessions in a row can't reach the app's issuer within 10 seconds, its refreshes return `kept` without calling Honkio for 15 seconds, and cached keys and discovery are used without refetching, so requests don't each wait on a timeout. That pause is kept in the cache under the app's issuer and client id: every PHP process sharing the cache sees it, another app never does, and a 429 or 408 never starts it. New sign-ins need Honkio to be up.
 
 **Refresh tokens rotate**, and reusing an old one ends the whole session. Two requests must not refresh the same token at once: `refresh()` remembers each result for 2 seconds in the cache and hands it to a second request carrying the same old token, and with several PHP processes you should also hold a lock per session around it. If you serialise refreshes per session yourself, pass `'remember_refreshes' => false` so live tokens are never handed out by refresh token alone. Keep tokens in server-side sessions only, never in a cookie the browser can read or in logs (`var_dump` of a `TokenSet` redacts them).
+
+**Signing out.** `revoke($refreshToken)` ends the session at Honkio (RFC 7009): its refresh token stops working, so its access tokens are not renewed. It first deletes the refresh memo for that token from the cache, so a request still carrying the token it replaced is not handed the session. It succeeds whether or not Honkio knew the token, and throws `IssuerUnavailableException` when Honkio can't be reached (forget the session on your side anyway). To delete entries rather than overwrite them with an empty value that expires at once, have your cache implement `Honkio\Auth\DeletableCache` (`delete($key)`); `InMemoryCache` does.
+
+```php
+$tokens = TokenSet::fromArray($_SESSION['honkio']);
+unset($_SESSION['honkio']);
+if ($tokens->refreshToken !== null) {
+    try {
+        $auth->revoke($tokens->refreshToken);
+    } catch (Honkio\Exception\HonkioException) {
+        // signed out here; Honkio ends the session when the refresh token expires
+    }
+}
+header('Location: ' . $auth->logoutUrl($tokens->idToken, 'https://app.example.ca/'));
+```
 
 `logoutUrl($idToken, $postLogoutRedirectUri, $state)` is where to send the browser after ending your own session.
 

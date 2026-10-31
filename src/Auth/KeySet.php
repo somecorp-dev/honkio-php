@@ -28,6 +28,7 @@ final class KeySet
         private readonly Cache $cache,
         private readonly \Closure $clock,
         private readonly float $timeout = 5.0,
+        private readonly ?OutageBreaker $breaker = null,
     ) {
     }
 
@@ -46,7 +47,8 @@ final class KeySet
         $fetchedAt = is_int($cached['fetched_at'] ?? null) ? $cached['fetched_at'] : 0;
         $found = $keys !== null ? self::find($keys, $kid) : null;
 
-        if ($found !== null && $now - $fetchedAt < self::FRESH_SECONDS) {
+        // While the issuer looks down (see OutageBreaker), cached keys are used without waiting on it.
+        if ($found !== null && ($now - $fetchedAt < self::FRESH_SECONDS || $this->breaker?->paused() === true)) {
             return $found;
         }
         if ($keys !== null && $found === null && $now - $fetchedAt < self::REFETCH_MIN_SECONDS) {
