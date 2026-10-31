@@ -13,24 +13,24 @@ use Honkio\Exception\TokenVerificationException;
 use Honkio\Honkio;
 
 /**
- * The outage-tolerant refresh rule: a session survives a Honkio outage, never
+ * The outage-tolerant refresh rule: a session survives a HonkIO outage, never
  * a refusal.
  *
  * - While the access token is unexpired, nothing is sent.
  * - Once it expires, the refresh token is exchanged. New tokens are checked
  *   and returned.
- * - If Honkio can't be reached (a connection error, a timeout, a 5xx, an
+ * - If HonkIO can't be reached (a connection error, a timeout, a 5xx, an
  *   unreadable answer), the session is kept on the old tokens until 24 hours
  *   past the access token's expiry, then ended.
- * - If Honkio answers 429 (shedding load) or 408, it has neither refreshed nor
+ * - If HonkIO answers 429 (shedding load) or 408, it has neither refreshed nor
  *   refused: the old tokens are kept for this request only, without the
  *   outage treatment ({@see RefreshResult::busy()}), and the next request
  *   tries again. Never past the same 24-hour limit.
- * - If Honkio refuses the refresh (any other 4xx: revoked, blocked, deleted,
+ * - If HonkIO refuses the refresh (any other 4xx: revoked, blocked, deleted,
  *   removed from the organization, a reused refresh token), it ends at once.
  * - Once {@see OutageBreaker::TRIP_SESSIONS} different sessions in a row
  *   could not reach this app's issuer, refreshes for this app keep their
- *   sessions without calling Honkio for {@see OutageBreaker::PAUSE_SECONDS}
+ *   sessions without calling HonkIO for {@see OutageBreaker::PAUSE_SECONDS}
  *   ({@see OutageBreaker}; the pause is per app, kept in the cache).
  *
  * Refresh tokens rotate and a reused one revokes the whole session, so two
@@ -49,7 +49,7 @@ final class TokenRefresher
     /** How long a refresh's result is handed to requests that arrive with the same old refresh token. */
     public const DEDUPE_SECONDS = 2;
 
-    /** Honkio answered but would not handle the refresh now: neither an outage nor a refusal. */
+    /** HonkIO answered but would not handle the refresh now: neither an outage nor a refusal. */
     private const BUSY_STATUSES = [408, 429];
 
     /** The memo: a hash of the old refresh token => the tokens its refresh returned. */
@@ -181,14 +181,14 @@ final class TokenRefresher
     }
 
     /**
-     * Ends the session at Honkio (RFC 7009, for sign-out) and first forgets
+     * Ends the session at HonkIO (RFC 7009, for sign-out) and first forgets
      * the refresh memo for it: the entry under this refresh token, and the
      * one that hands this token to a request still holding the token it
-     * replaced. Succeeds whether or not Honkio knew the token.
+     * replaced. Succeeds whether or not HonkIO knew the token.
      *
      * @throws InvalidArgumentException for an empty token
-     * @throws IssuerUnavailableException when Honkio can't be reached, or answers 5xx, 408 or 429
-     * @throws ApiException when Honkio refuses (401 invalid_client: check the client id and secret)
+     * @throws IssuerUnavailableException when HonkIO can't be reached, or answers 5xx, 408 or 429
+     * @throws ApiException when HonkIO refuses (401 invalid_client: check the client id and secret)
      */
     public function revoke(string $refreshToken): void
     {
@@ -213,7 +213,7 @@ final class TokenRefresher
         }
         $body = self::decode($response->getBody()->__toString());
         $error = is_array($body) && is_string($body['error'] ?? null) && $body['error'] !== '' ? $body['error'] : 'revoke_failed';
-        $description = is_array($body) && is_string($body['error_description'] ?? null) ? $body['error_description'] : "Honkio refused to revoke the token (HTTP $status).";
+        $description = is_array($body) && is_string($body['error_description'] ?? null) ? $body['error_description'] : "HonkIO refused to revoke the token (HTTP $status).";
 
         throw ApiException::create($error, $description, $status, $body);
     }
@@ -275,7 +275,7 @@ final class TokenRefresher
         }
     }
 
-    /** Honkio could not be reached for this session: count it toward the breaker, keep the session. */
+    /** HonkIO could not be reached for this session: count it toward the breaker, keep the session. */
     private function down(TokenSet $tokens, int $now, string $session): RefreshResult
     {
         $this->breaker?->unreachable($session);
@@ -288,7 +288,7 @@ final class TokenRefresher
         return $this->withinLimit($tokens, $now) ? RefreshResult::kept($tokens) : RefreshResult::ended('outage_limit');
     }
 
-    /** A session never runs on tokens Honkio hasn't refreshed for more than 24 hours past their expiry. */
+    /** A session never runs on tokens HonkIO hasn't refreshed for more than 24 hours past their expiry. */
     private function withinLimit(TokenSet $tokens, int $now): bool
     {
         return $now <= $tokens->expiresAt + self::OUTAGE_GRACE_SECONDS;

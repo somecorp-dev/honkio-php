@@ -51,7 +51,7 @@ final class Fetch
         return $body;
     }
 
-    /** An https URL, or plain http on localhost (a local Honkio for development). */
+    /** An https URL, or plain http on localhost (a local HonkIO for development). */
     public static function isSecureUrl(mixed $url): bool
     {
         if (!is_string($url) || $url === '') {

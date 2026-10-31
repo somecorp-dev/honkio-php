@@ -57,7 +57,7 @@ final class Honkio
     public readonly ConsentBatches $consentBatches;
     public readonly OptInConfirmations $optInConfirmations;
     public readonly Webhooks $webhooks;
-    /** Honkio Auth (not available yet): hosted sign-in apps, their users, organizations and settings. */
+    /** HonkIO Auth (not available yet): hosted sign-in apps, their users, organizations and settings. */
     public readonly AuthApps $authApps;
 
     /**

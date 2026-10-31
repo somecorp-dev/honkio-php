@@ -38,7 +38,7 @@ final class TokenSet
         $access = $data['access_token'] ?? null;
         $expiresAt = $data['expires_at'] ?? null;
         if (!is_string($access) || $access === '' || !is_int($expiresAt)) {
-            throw new InvalidArgumentException('Not a stored Honkio Auth token set (access_token and expires_at are required).');
+            throw new InvalidArgumentException('Not a stored HonkIO Auth token set (access_token and expires_at are required).');
         }
         $string = static fn (mixed $v): ?string => is_string($v) && $v !== '' ? $v : null;
 

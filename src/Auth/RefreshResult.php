@@ -8,17 +8,17 @@ namespace Honkio\Auth;
  * What {@see TokenRefresher::refresh()} decided.
  *
  * - `valid`: the access token is still good; nothing was sent.
- * - `refreshed`: Honkio issued new tokens; store $tokens in place of the old ones.
+ * - `refreshed`: HonkIO issued new tokens; store $tokens in place of the old ones.
  * - `kept`: the session stays signed in on the old tokens for this request,
  *   and the next request tries again; never more than 24 hours past the
  *   access token's expiry. $reason says why: `unreachable` (a connection
- *   error, a timeout, a 5xx: Honkio is down, see isOffline()) or `busy`
- *   (Honkio answered 429 or 408: it is shedding load and has neither
+ *   error, a timeout, a 5xx: HonkIO is down, see isOffline()) or `busy`
+ *   (HonkIO answered 429 or 408: it is shedding load and has neither
  *   refreshed nor refused; not an outage).
- * - `ended`: sign the user out now. $reason says why: `rejected` (Honkio
+ * - `ended`: sign the user out now. $reason says why: `rejected` (HonkIO
  *   refused the refresh: the session was revoked, the user blocked or
  *   deleted, removed from the organization; $error carries the OAuth error),
- *   `outage_limit` (Honkio has not refreshed the tokens in the 24 hours past
+ *   `outage_limit` (HonkIO has not refreshed the tokens in the 24 hours past
  *   their expiry),
  *   `no_refresh_token`, `invalid_response` (the new tokens failed their
  *   checks) or `subject_changed` (the new tokens name another user).
@@ -48,13 +48,13 @@ final class RefreshResult
         return new self(self::REFRESHED, $tokens);
     }
 
-    /** Honkio can't be reached: keep the old tokens (the outage rule). */
+    /** HonkIO can't be reached: keep the old tokens (the outage rule). */
     public static function kept(TokenSet $tokens): self
     {
         return new self(self::KEPT, $tokens, 'unreachable');
     }
 
-    /** Honkio answered 429 or 408: keep the old tokens for this request only; it is not an outage. */
+    /** HonkIO answered 429 or 408: keep the old tokens for this request only; it is not an outage. */
     public static function busy(TokenSet $tokens): self
     {
         return new self(self::KEPT, $tokens, 'busy');
@@ -71,7 +71,7 @@ final class RefreshResult
         return $this->status !== self::ENDED;
     }
 
-    /** True when the session is kept because Honkio can't be reached (not when it answered 429 or 408). */
+    /** True when the session is kept because HonkIO can't be reached (not when it answered 429 or 408). */
     public function isOffline(): bool
     {
         return $this->status === self::KEPT && $this->reason === 'unreachable';

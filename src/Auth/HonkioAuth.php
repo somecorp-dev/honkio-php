@@ -11,8 +11,8 @@ use Honkio\Exception\IssuerUnavailableException;
 use Honkio\Exception\TokenVerificationException;
 
 /**
- * Honkio Auth for one app (not available yet): check its tokens and keep its
- * sessions alive through a Honkio outage. Sign-in itself is standard OpenID
+ * HonkIO Auth for one app (not available yet): check its tokens and keep its
+ * sessions alive through a HonkIO outage. Sign-in itself is standard OpenID
  * Connect (authorization code with PKCE) against the app's issuer, so any OIDC
  * client can run it; on Laravel, honkio/laravel ships a Socialite provider.
  *
@@ -53,7 +53,7 @@ final class HonkioAuth
     public function __construct(array $options)
     {
         if (!extension_loaded('openssl')) {
-            throw new InvalidArgumentException('Honkio Auth token checks need the PHP openssl extension.');
+            throw new InvalidArgumentException('HonkIO Auth token checks need the PHP openssl extension.');
         }
         $issuer = rtrim((string) ($options['issuer'] ?? ''), '/');
         if (!Fetch::isSecureUrl($issuer) || (parse_url($issuer, PHP_URL_PATH) ?? '') !== '' || str_contains($issuer, '?') || str_contains($issuer, '#')) {
@@ -152,16 +152,16 @@ final class HonkioAuth
     }
 
     /**
-     * Ends the session at Honkio, for sign-out: revokes the refresh token at
+     * Ends the session at HonkIO, for sign-out: revokes the refresh token at
      * the app's revocation endpoint (RFC 7009), so it and the session's
-     * access tokens stop being refreshed. Before calling Honkio it deletes
+     * access tokens stop being refreshed. Before calling HonkIO it deletes
      * the refresh memo for this token from the cache, so a request still
      * carrying the token this one replaced is not handed it. Succeeds whether
-     * or not Honkio knew the token.
+     * or not HonkIO knew the token.
      *
      * @throws InvalidArgumentException for an empty token
-     * @throws IssuerUnavailableException when Honkio can't be reached, or answers 5xx, 408 or 429 (the memo is forgotten anyway)
-     * @throws \Honkio\Exception\ApiException when Honkio refuses the client (401 invalid_client)
+     * @throws IssuerUnavailableException when HonkIO can't be reached, or answers 5xx, 408 or 429 (the memo is forgotten anyway)
+     * @throws \Honkio\Exception\ApiException when HonkIO refuses the client (401 invalid_client)
      */
     public function revoke(string $refreshToken): void
     {

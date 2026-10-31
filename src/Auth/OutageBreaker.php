@@ -9,9 +9,9 @@ namespace Honkio\Auth;
  * different sessions in a row could not reach it (a connection error, a
  * timeout, a 5xx, an unreadable answer) within {@see TRIP_WINDOW_SECONDS};
  * then, for {@see PAUSE_SECONDS}, refreshes keep their sessions without
- * calling Honkio and cached discovery and keys are used without refetching,
- * so requests don't each wait on a timeout. Any answer from Honkio (a 408 or
- * 429 included) resets the count, so one session, or a busy Honkio, never
+ * calling HonkIO and cached discovery and keys are used without refetching,
+ * so requests don't each wait on a timeout. Any answer from HonkIO (a 408 or
+ * 429 included) resets the count, so one session, or a busy HonkIO, never
  * pauses the others.
  *
  * The state lives in the {@see Cache} under a key for this issuer and client
@@ -45,7 +45,7 @@ final class OutageBreaker
         return $until > ($this->clock)();
     }
 
-    /** A refresh for $session (a hash of its refresh token) could not reach Honkio. */
+    /** A refresh for $session (a hash of its refresh token) could not reach HonkIO. */
     public function unreachable(string $session): void
     {
         $now = ($this->clock)();
@@ -60,7 +60,7 @@ final class OutageBreaker
         $this->cache->set($this->key, ['recent' => $recent, 'paused_until' => $state['paused_until']], self::TRIP_WINDOW_SECONDS + self::PAUSE_SECONDS);
     }
 
-    /** Honkio answered (anything but a 5xx): the run of failures is over. */
+    /** HonkIO answered (anything but a 5xx): the run of failures is over. */
     public function answered(): void
     {
         $state = $this->state();

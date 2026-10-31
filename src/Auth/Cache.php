@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Honkio\Auth;
 
 /**
- * Where Honkio Auth keeps the discovery document, the signing keys and, for a
+ * Where HonkIO Auth keeps the discovery document, the signing keys and, for a
  * few seconds, the result of each refresh. Share one across requests (APCu, Redis,
- * your framework's cache) so a Honkio outage finds the keys already cached;
+ * your framework's cache) so a HonkIO outage finds the keys already cached;
  * the default, {@see InMemoryCache}, lasts one PHP process.
  *
  * The refresh entries hold tokens: use a store only your servers can read.

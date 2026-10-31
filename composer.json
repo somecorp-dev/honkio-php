@@ -16,7 +16,7 @@
         "guzzlehttp/guzzle": "^7.8"
     },
     "suggest": {
-        "ext-openssl": "Needed by Honkio\\Auth to check Honkio Auth tokens (ES256)."
+        "ext-openssl": "Needed by Honkio\\Auth to check HonkIO Auth tokens (ES256)."
     },
     "require-dev": {
         "phpunit/phpunit": "^10.5 || ^11",

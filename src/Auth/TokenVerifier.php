@@ -8,7 +8,7 @@ use Honkio\Exception\IssuerUnavailableException;
 use Honkio\Exception\TokenVerificationException;
 
 /**
- * Checks Honkio Auth ID and access tokens for one app: an ES256 signature by
+ * Checks HonkIO Auth ID and access tokens for one app: an ES256 signature by
  * one of the app's published keys, the app's exact issuer, the app's client
  * id as audience, the token type, and the time claims (with $leeway seconds
  * for clock skew). A token for another app, even one on your own account,

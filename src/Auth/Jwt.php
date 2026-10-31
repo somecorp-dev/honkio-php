@@ -8,14 +8,14 @@ use Honkio\Exception\TokenVerificationException;
 
 /**
  * Compact JWS parsing and ES256 (ECDSA P-256 with SHA-256) checking on
- * ext-openssl. Honkio Auth signs with ES256 only, so nothing else is
+ * ext-openssl. HonkIO Auth signs with ES256 only, so nothing else is
  * implemented and nothing else is accepted.
  *
  * @internal
  */
 final class Jwt
 {
-    /** Longer than any token Honkio issues; a bigger one is refused before any work. */
+    /** Longer than any token HonkIO issues; a bigger one is refused before any work. */
     public const MAX_LENGTH = 16384;
 
     /** SubjectPublicKeyInfo header for an uncompressed P-256 point (id-ecPublicKey, prime256v1). */
@@ -29,7 +29,7 @@ final class Jwt
     public static function decode(string $jwt): array
     {
         if (strlen($jwt) > self::MAX_LENGTH) {
-            throw new TokenVerificationException('too_large', 'The token is longer than any Honkio issues.');
+            throw new TokenVerificationException('too_large', 'The token is longer than any HonkIO issues.');
         }
         $parts = explode('.', $jwt);
         if (count($parts) !== 3) {

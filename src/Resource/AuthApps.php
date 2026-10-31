@@ -13,7 +13,7 @@ use Honkio\Resource\AuthApps\AuthSecurity;
 use Honkio\Resource\AuthApps\AuthUsers;
 
 /**
- * Honkio Auth apps: hosted, passwordless OIDC sign-in on a hostname you own.
+ * HonkIO Auth apps: hosted, passwordless OIDC sign-in on a hostname you own.
  * Not available yet: the routes answer 404 until your account is enabled.
  *
  * Sign-in itself is standard OpenID Connect against the app's issuer; to check
@@ -143,7 +143,7 @@ final class AuthApps
     /**
      * Upload the logo shown on the sign-in page: the image's bytes and its
      * type (image/png, image/jpeg, image/webp or image/gif), at most 1 MB.
-     * It is sent as multipart/form-data in a part named `logo`. Honkio
+     * It is sent as multipart/form-data in a part named `logo`. HonkIO
      * re-encodes it; SVG is not accepted. Returns the app.
      *
      * @return array<mixed>

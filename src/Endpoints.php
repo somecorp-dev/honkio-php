@@ -93,7 +93,7 @@ final class Endpoints
     ];
 
     /**
-     * Honkio Auth routes: not available yet, so the public OpenAPI document
+     * HonkIO Auth routes: not available yet, so the public OpenAPI document
      * leaves them out. tests/AuthEndpointsTest.php checks them against the API
      * source instead, and fails once one appears in the public spec, so the
      * launch moves them into ALL.

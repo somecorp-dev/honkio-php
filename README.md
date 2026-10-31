@@ -8,7 +8,7 @@ The official PHP SDK for [HonkIO](https://honkio.ca): Canadian SMS and email, wi
 - Retries what waiting fixes (a number's per-minute sending rate, the carrier asking to slow down), with an idempotency key so a retried send never goes out twice
 - Live sending and live receiving (buying a number, the managed inbound email address, a domain's receiving toggle) need the account owner's phone verified once; test keys skip it
 
-On Laravel? Use [`honkio/laravel`](https://honkio.ca/docs/sdk) for a mail transport, an SMS notification channel and Honkio Auth sign-in (a Socialite provider, a guard and middleware).
+On Laravel? Use [`honkio/laravel`](https://honkio.ca/docs/sdk) for a mail transport, an SMS notification channel and HonkIO Auth sign-in (a Socialite provider, a guard and middleware).
 
 ## Install
 
@@ -161,7 +161,7 @@ Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=
 | `domains` | `create($params)`, `get($id)`, `list()`, `update($id, $params)`, `verify($id)`, `remove($id)` |
 | `suppressions` | `create(['email_address' => ...])`, `list($query)`, `remove($emailAddress)` |
 | `templates` | `create`, `get($idOrAlias)`, `list`, `update`, `publish`, `rollback($idOrAlias, ['version' => 2])`, `versions`, `remove` |
-| `authApps` | Honkio Auth (not available yet); see [Honkio Auth](#honkio-auth-not-available-yet) |
+| `authApps` | HonkIO Auth (not available yet); see [HonkIO Auth](#honkio-auth-not-available-yet) |
 
 `Honkio\Endpoints::ALL` lists every route the SDK calls as `[resource, method, HTTP method, path]`.
 
@@ -207,9 +207,9 @@ if ($event['type'] === 'message.delivered') {
 
 The signature is HMAC-SHA256, keyed with the signing secret as UTF-8 (not hex-decoded), over `"{X-HonkIO-Timestamp}.{raw body}"`. A timestamp more than 300 seconds from now is refused as a possible replay; pass a fourth argument to change that. Header names are matched case-insensitively and a value may be a string or a list of strings, so PSR-7 and Laravel header arrays work as they are. A missing secret throws `InvalidArgumentException`; anything about the headers, signature, timestamp or body throws `SignatureVerificationException`. `Honkio\WebhookEvents::ALL` lists every event a webhook can subscribe to. See <https://honkio.ca/docs/webhooks/signing> for the published test vector.
 
-## Honkio Auth (not available yet)
+## HonkIO Auth (not available yet)
 
-Honkio Auth is hosted, passwordless sign-in (email code or link, text code, passkeys) on a hostname you own, with users stored in Canada. It is not available yet: its routes answer 404 until your account is enabled.
+HonkIO Auth is hosted, passwordless sign-in (email code or link, text code, passkeys) on a hostname you own, with users stored in Canada. It is not available yet: its routes answer 404 until your account is enabled.
 
 ### Managing apps
 
@@ -276,7 +276,7 @@ $_SESSION['honkio'] = $auth->tokenSetFromResponse($tokenResponse, $nonce)->toArr
 // On each request: refresh when needed.
 $result = $auth->refresh(TokenSet::fromArray($_SESSION['honkio']));
 if (!$result->isActive()) {
-    unset($_SESSION['honkio']); // signed out: the refresh was refused, or Honkio was down for too long
+    unset($_SESSION['honkio']); // signed out: the refresh was refused, or HonkIO was down for too long
 } elseif ($result->changed()) {
     $_SESSION['honkio'] = $result->tokens->toArray();
 }
@@ -284,11 +284,11 @@ if (!$result->isActive()) {
 
 Every check is local to one app: the signature must come from the app's published ES256 keys, `iss` must be exactly the app's issuer, `aud` the app's client id, and an access token must be typed `at+jwt`, so a token for another app never passes.
 
-**Outages.** Users already signed in stay signed in while Honkio is down. Tokens are checked against cached keys (a fetched copy is used for 5 minutes and kept for a week). `refresh()` returns `kept` (reason `unreachable`, `isOffline()` true) when Honkio can't be reached (a connection error, a timeout or a 5xx) and keeps the session on its current tokens for at most 24 hours past the access token's expiry, then `ended` (`outage_limit`). A 429 or 408 from Honkio is neither an outage nor a refusal: `refresh()` returns `kept` with reason `busy`, so the current tokens serve that request only and the next request asks again, within the same 24-hour limit. A refresh Honkio refuses (the session was revoked, the user blocked or deleted, or removed from the organization) is `ended` (`rejected`) at once. Once 3 different sessions in a row can't reach the app's issuer within 10 seconds, its refreshes return `kept` without calling Honkio for 15 seconds, and cached keys and discovery are used without refetching, so requests don't each wait on a timeout. That pause is kept in the cache under the app's issuer and client id: every PHP process sharing the cache sees it, another app never does, and a 429 or 408 never starts it. New sign-ins need Honkio to be up.
+**Outages.** Users already signed in stay signed in while HonkIO is down. Tokens are checked against cached keys (a fetched copy is used for 5 minutes and kept for a week). `refresh()` returns `kept` (reason `unreachable`, `isOffline()` true) when HonkIO can't be reached (a connection error, a timeout or a 5xx) and keeps the session on its current tokens for at most 24 hours past the access token's expiry, then `ended` (`outage_limit`). A 429 or 408 from HonkIO is neither an outage nor a refusal: `refresh()` returns `kept` with reason `busy`, so the current tokens serve that request only and the next request asks again, within the same 24-hour limit. A refresh HonkIO refuses (the session was revoked, the user blocked or deleted, or removed from the organization) is `ended` (`rejected`) at once. Once 3 different sessions in a row can't reach the app's issuer within 10 seconds, its refreshes return `kept` without calling HonkIO for 15 seconds, and cached keys and discovery are used without refetching, so requests don't each wait on a timeout. That pause is kept in the cache under the app's issuer and client id: every PHP process sharing the cache sees it, another app never does, and a 429 or 408 never starts it. New sign-ins need HonkIO to be up.
 
 **Refresh tokens rotate**, and reusing an old one ends the whole session. Two requests must not refresh the same token at once: `refresh()` remembers each result for 2 seconds in the cache and hands it to a second request carrying the same old token, and with several PHP processes you should also hold a lock per session around it. If you serialise refreshes per session yourself, pass `'remember_refreshes' => false` so live tokens are never handed out by refresh token alone. Keep tokens in server-side sessions only, never in a cookie the browser can read or in logs (`var_dump` of a `TokenSet` redacts them).
 
-**Signing out.** `revoke($refreshToken)` ends the session at Honkio (RFC 7009): its refresh token stops working, so its access tokens are not renewed. It first deletes the refresh memo for that token from the cache, so a request still carrying the token it replaced is not handed the session. It succeeds whether or not Honkio knew the token, and throws `IssuerUnavailableException` when Honkio can't be reached (forget the session on your side anyway). To delete entries rather than overwrite them with an empty value that expires at once, have your cache implement `Honkio\Auth\DeletableCache` (`delete($key)`); `InMemoryCache` does.
+**Signing out.** `revoke($refreshToken)` ends the session at HonkIO (RFC 7009): its refresh token stops working, so its access tokens are not renewed. It first deletes the refresh memo for that token from the cache, so a request still carrying the token it replaced is not handed the session. It succeeds whether or not HonkIO knew the token, and throws `IssuerUnavailableException` when HonkIO can't be reached (forget the session on your side anyway). To delete entries rather than overwrite them with an empty value that expires at once, have your cache implement `Honkio\Auth\DeletableCache` (`delete($key)`); `InMemoryCache` does.
 
 ```php
 $tokens = TokenSet::fromArray($_SESSION['honkio']);
@@ -297,7 +297,7 @@ if ($tokens->refreshToken !== null) {
     try {
         $auth->revoke($tokens->refreshToken);
     } catch (Honkio\Exception\HonkioException) {
-        // signed out here; Honkio ends the session when the refresh token expires
+        // signed out here; HonkIO ends the session when the refresh token expires
     }
 }
 header('Location: ' . $auth->logoutUrl($tokens->idToken, 'https://app.example.ca/'));
