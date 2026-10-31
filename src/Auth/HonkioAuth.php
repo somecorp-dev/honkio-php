@@ -11,7 +11,7 @@ use Honkio\Exception\IssuerUnavailableException;
 use Honkio\Exception\TokenVerificationException;
 
 /**
- * HonkIO Auth for one app (not available yet): check its tokens and keep its
+ * HonkIO Auth for one app: check its tokens and keep its
  * sessions alive through a HonkIO outage. Sign-in itself is standard OpenID
  * Connect (authorization code with PKCE) against the app's issuer, so any OIDC
  * client can run it; on Laravel, honkio/laravel ships a Socialite provider.

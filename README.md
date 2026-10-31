@@ -161,7 +161,7 @@ Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=
 | `domains` | `create($params)`, `get($id)`, `list()`, `update($id, $params)`, `verify($id)`, `remove($id)` |
 | `suppressions` | `create(['email_address' => ...])`, `list($query)`, `remove($emailAddress)` |
 | `templates` | `create`, `get($idOrAlias)`, `list`, `update`, `publish`, `rollback($idOrAlias, ['version' => 2])`, `versions`, `remove` |
-| `authApps` | HonkIO Auth (not available yet); see [HonkIO Auth](#honkio-auth-not-available-yet) |
+| `authApps` | HonkIO Auth; see [HonkIO Auth](#honkio-auth) |
 
 `Honkio\Endpoints::ALL` lists every route the SDK calls as `[resource, method, HTTP method, path]`.
 
@@ -207,9 +207,9 @@ if ($event['type'] === 'message.delivered') {
 
 The signature is HMAC-SHA256, keyed with the signing secret as UTF-8 (not hex-decoded), over `"{X-HonkIO-Timestamp}.{raw body}"`. A timestamp more than 300 seconds from now is refused as a possible replay; pass a fourth argument to change that. Header names are matched case-insensitively and a value may be a string or a list of strings, so PSR-7 and Laravel header arrays work as they are. A missing secret throws `InvalidArgumentException`; anything about the headers, signature, timestamp or body throws `SignatureVerificationException`. `Honkio\WebhookEvents::ALL` lists every event a webhook can subscribe to. See <https://honkio.ca/docs/webhooks/signing> for the published test vector.
 
-## HonkIO Auth (not available yet)
+## HonkIO Auth
 
-HonkIO Auth is hosted, passwordless sign-in (email code or link, text code, passkeys) on a hostname you own, with users stored in Canada. It is not available yet: its routes answer 404 until your account is enabled.
+HonkIO Auth is hosted, passwordless sign-in (email code or link, text code, passkeys) on a hostname you own, with users stored in Canada. The management API needs a key with the `auth_apps`, `auth_users` or `auth_organizations` permission; the full reference is at [honkio.ca/docs/auth/api](https://honkio.ca/docs/auth/api).
 
 ### Managing apps
 
@@ -245,7 +245,7 @@ $honkio->authApps->cancelHostnameChange($app['id']);
 | `authApps->users` | `list`, `get`, `update`, `block($id, $userId, $blocked, $reason)`, `unblock`, `remove`, `removeLikelyBots($id, $createdBefore, $stepUpToken)` (an `auth_users:bulk_delete` step-up per call; a batch at a time, repeat while `more`), `sessions`, `signIns($id, $userId)`, `passkeys($id, $userId)` (public metadata; `usable` is false for one made under a passkey scope the app no longer uses), `removePasskey($id, $userId, $passkeyId)` (tells the user, ends their sessions; needs `auth_users` with delete), `revokeSession($id, $sessionId)` |
 | `authApps->exports` | `create($id, $stepUpToken)` (an `auth_users:export` step-up), `get`, `latest($id, $stepUpToken)` (the newest export; with an `auth_users:export` step-up, a fresh download link for the key that requested it), `download($tokenOrUrl)` (a string; the link works once, for 15 minutes) |
 
-`Honkio\Endpoints::NOT_LAUNCHED` lists these routes until launch.
+`Honkio\Endpoints::AUTH` lists these routes (`NOT_LAUNCHED` is its deprecated old name).
 
 ### Signing users in
 

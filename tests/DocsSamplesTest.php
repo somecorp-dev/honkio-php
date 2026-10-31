@@ -59,7 +59,7 @@ final class DocsSamplesTest extends TestCase
     private static function known(): array
     {
         $known = [];
-        foreach ([...Endpoints::ALL, ...Endpoints::NOT_LAUNCHED] as [$resource, $method]) {
+        foreach ([...Endpoints::ALL, ...Endpoints::AUTH] as [$resource, $method]) {
             $known[] = str_replace('.', '->', $resource) . '->' . $method;
         }
 
@@ -71,7 +71,7 @@ final class DocsSamplesTest extends TestCase
     {
         return array_values(array_unique(array_map(
             static fn (array $row): string => explode('.', $row[0])[0],
-            [...Endpoints::ALL, ...Endpoints::NOT_LAUNCHED],
+            [...Endpoints::ALL, ...Endpoints::AUTH],
         )));
     }
 

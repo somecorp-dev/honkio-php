@@ -308,9 +308,9 @@ final class AuthAppsTest extends TestCase
 
     public function testEveryTableRowIsExercisedHere(): void
     {
-        // A route added to NOT_LAUNCHED without a test above shows up here.
+        // A route added to Endpoints::AUTH without a test above shows up here.
         $source = (string) file_get_contents(__FILE__);
-        foreach (Endpoints::NOT_LAUNCHED as [$resource, $method]) {
+        foreach (Endpoints::AUTH as [$resource, $method]) {
             $this->assertMatchesRegularExpression('/->' . preg_quote($method, '/') . '\(/', $source, "$resource.$method is not called in this test");
         }
     }

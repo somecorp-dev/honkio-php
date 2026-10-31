@@ -93,14 +93,17 @@ final class Endpoints
     ];
 
     /**
-     * HonkIO Auth routes: not available yet, so the public OpenAPI document
-     * leaves them out. tests/AuthEndpointsTest.php checks them against the API
-     * source instead, and fails once one appears in the public spec, so the
-     * launch moves them into ALL.
+     * HonkIO Auth routes. The /v1/auth-apps routes are in the public OpenAPI
+     * document, and tests/AuthEndpointsTest.php checks them against it; the
+     * export download (GET /v1/auth-exports/{token}) is a single-use link, not
+     * an API-key operation, so the document leaves it out and the test checks
+     * it against the API source. They stay in their own table, apart from ALL,
+     * until the SDK method tables on honkio.ca/docs/sdk list them; the Auth API
+     * reference is at https://honkio.ca/docs/auth/api.
      *
      * @var list<array{string, string, string, string}>
      */
-    public const NOT_LAUNCHED = [
+    public const AUTH = [
         ['authApps', 'create', 'POST', '/v1/auth-apps'],
         ['authApps', 'list', 'GET', '/v1/auth-apps'],
         ['authApps', 'get', 'GET', '/v1/auth-apps/{id}'],
@@ -161,4 +164,11 @@ final class Endpoints
         ['authApps.exports', 'get', 'GET', '/v1/auth-apps/{id}/exports/{exportId}'],
         ['authApps.exports', 'download', 'GET', '/v1/auth-exports/{token}'],
     ];
+
+    /**
+     * @deprecated 1.x: the old name of AUTH, from before HonkIO Auth launched.
+     *
+     * @var list<array{string, string, string, string}>
+     */
+    public const NOT_LAUNCHED = self::AUTH;
 }

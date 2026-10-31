@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Honkio Auth's routes are left out of the public OpenAPI document until
- * launch, so Endpoints::NOT_LAUNCHED is checked against the API's route source
+ * launch, so Endpoints::AUTH is checked against the API's route source
  * instead (api/src/routes/authApps/*.ts, and the export download route), and
  * a route that shows up in the public spec fails here so the launch moves it
  * into Endpoints::ALL.
@@ -52,8 +52,8 @@ final class AuthEndpointsTest extends TestCase
 
     public function testTheTableCoversEveryContractRoute(): void
     {
-        $this->assertGreaterThanOrEqual(49, count(Endpoints::NOT_LAUNCHED));
-        foreach (Endpoints::NOT_LAUNCHED as [$resource, , , $path]) {
+        $this->assertGreaterThanOrEqual(49, count(Endpoints::AUTH));
+        foreach (Endpoints::AUTH as [$resource, , , $path]) {
             $this->assertMatchesRegularExpression('#^authApps(\.\w+)?$#', $resource);
             $this->assertMatchesRegularExpression('#^/v1/auth-(apps|exports)(/|$)#', $path);
         }
@@ -64,7 +64,7 @@ final class AuthEndpointsTest extends TestCase
         $this->requireMonorepo();
         $routes = $this->apiRoutes();
         $this->assertArrayHasKey('POST /v1/auth-apps', $routes, 'the route scan found nothing; did the route syntax change?');
-        foreach (Endpoints::NOT_LAUNCHED as [$resource, $method, $http, $path]) {
+        foreach (Endpoints::AUTH as [$resource, $method, $http, $path]) {
             if (!str_starts_with($path, '/v1/auth-apps')) {
                 continue;
             }
@@ -90,24 +90,31 @@ final class AuthEndpointsTest extends TestCase
         $this->assertTrue($found, 'GET /v1/auth-exports/{token} is not registered anywhere in api/src');
     }
 
-    public function testNoneIsInThePublicSpecYet(): void
+    public function testTheManagementRoutesAreInThePublicSpecAndTheDownloadIsNot(): void
     {
         $this->requireMonorepo();
         $spec = json_decode((string) file_get_contents(self::SPEC), true, 512, JSON_THROW_ON_ERROR);
         $this->assertIsArray($spec);
         $this->assertIsArray($spec['paths']);
-        foreach (Endpoints::NOT_LAUNCHED as [$resource, $method, $http, $path]) {
-            $this->assertFalse(
-                isset($spec['paths'][$path][strtolower($http)]),
-                "$resource.$method: $http $path is in the public spec now; move it from Endpoints::NOT_LAUNCHED to Endpoints::ALL",
-            );
+        foreach (Endpoints::AUTH as [$resource, $method, $http, $path]) {
+            $published = isset($spec['paths'][$path][strtolower($http)]);
+            if (str_starts_with($path, '/v1/auth-exports')) {
+                $this->assertFalse($published, "$resource.$method: $http $path is a single-use link and should stay out of the public spec");
+            } else {
+                $this->assertTrue($published, "$resource.$method: $http $path is not in the public spec");
+            }
         }
+    }
+
+    public function testTheOldNameStillWorks(): void
+    {
+        $this->assertSame(Endpoints::AUTH, Endpoints::NOT_LAUNCHED);
     }
 
     public function testNoRouteIsListedTwice(): void
     {
         $seen = [];
-        foreach ([...Endpoints::ALL, ...Endpoints::NOT_LAUNCHED] as [$resource, $method, $http, $path]) {
+        foreach ([...Endpoints::ALL, ...Endpoints::AUTH] as [$resource, $method, $http, $path]) {
             $key = "$resource.$method $http $path";
             $this->assertArrayNotHasKey($key, $seen);
             $seen[$key] = true;
