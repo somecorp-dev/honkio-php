@@ -66,6 +66,7 @@ final class WebhookEvents
         'signup.blocked',
         'app.attack_mode.started',
         'app.attack_mode.ended',
+        'app.updated',
         'sms.spend_limit_reached',
     ];
 }
