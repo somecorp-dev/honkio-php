@@ -8,11 +8,11 @@ use Honkio\Endpoints;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Honkio Auth's routes are left out of the public OpenAPI document until
- * launch, so Endpoints::AUTH is checked against the API's route source
- * instead (api/src/routes/authApps/*.ts, and the export download route), and
- * a route that shows up in the public spec fails here so the launch moves it
- * into Endpoints::ALL.
+ * Honkio Auth's routes (Endpoints::AUTH) against the API's route source
+ * (api/src/routes/authApps/*.ts, and the export download route). Its
+ * management routes are in the public OpenAPI document and in Endpoints::ALL,
+ * which SpecContractTest checks against it; the export download is a
+ * single-use link that stays out of the document, in Endpoints::UNCHECKED.
  */
 final class AuthEndpointsTest extends TestCase
 {
@@ -106,6 +106,16 @@ final class AuthEndpointsTest extends TestCase
         }
     }
 
+    public function testTheManagementRoutesAreInAllAndOnlyTheDownloadIsUnchecked(): void
+    {
+        $authInAll = array_values(array_filter(
+            Endpoints::ALL,
+            static fn (array $e): bool => str_starts_with($e[0], 'authApps'),
+        ));
+        $this->assertSame([...$authInAll, ...Endpoints::UNCHECKED], Endpoints::AUTH);
+        $this->assertSame([['authApps.exports', 'download', 'GET', '/v1/auth-exports/{token}']], Endpoints::UNCHECKED);
+    }
+
     public function testTheOldNameStillWorks(): void
     {
         $this->assertSame(Endpoints::AUTH, Endpoints::NOT_LAUNCHED);
@@ -114,7 +124,7 @@ final class AuthEndpointsTest extends TestCase
     public function testNoRouteIsListedTwice(): void
     {
         $seen = [];
-        foreach ([...Endpoints::ALL, ...Endpoints::AUTH] as [$resource, $method, $http, $path]) {
+        foreach ([...Endpoints::ALL, ...Endpoints::UNCHECKED] as [$resource, $method, $http, $path]) {
             $key = "$resource.$method $http $path";
             $this->assertArrayNotHasKey($key, $seen);
             $seen[$key] = true;

@@ -163,7 +163,7 @@ Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=
 | `templates` | `create`, `get($idOrAlias)`, `list`, `update`, `publish`, `rollback($idOrAlias, ['version' => 2])`, `versions`, `remove` |
 | `authApps` | HonkIO Auth; see [HonkIO Auth](#honkio-auth) |
 
-`Honkio\Endpoints::ALL` lists every route the SDK calls as `[resource, method, HTTP method, path]`.
+`Honkio\Endpoints::ALL` lists every route the SDK calls as `[resource, method, HTTP method, path]`, except the HonkIO Auth export download link, which is in `Honkio\Endpoints::UNCHECKED`.
 
 ### Consent
 
@@ -245,7 +245,7 @@ $honkio->authApps->cancelHostnameChange($app['id']);
 | `authApps->users` | `list`, `get`, `update`, `block($id, $userId, $blocked, $reason)`, `unblock`, `remove`, `removeLikelyBots($id, $createdBefore, $stepUpToken)` (an `auth_users:bulk_delete` step-up per call; a batch at a time, repeat while `more`), `sessions`, `signIns($id, $userId)`, `passkeys($id, $userId)` (public metadata; `usable` is false for one made under a passkey scope the app no longer uses), `removePasskey($id, $userId, $passkeyId)` (tells the user, ends their sessions; needs `auth_users` with delete), `revokeSession($id, $sessionId)` |
 | `authApps->exports` | `create($id, $stepUpToken)` (an `auth_users:export` step-up), `get`, `latest($id, $stepUpToken)` (the newest export; with an `auth_users:export` step-up, a fresh download link for the key that requested it), `download($tokenOrUrl)` (a string; the link works once, for 15 minutes) |
 
-`Honkio\Endpoints::AUTH` lists these routes (`NOT_LAUNCHED` is its deprecated old name).
+These routes are in `Honkio\Endpoints::ALL` like every other, except the export download link, which is in `Honkio\Endpoints::UNCHECKED` (it is not an API-key operation, so the API's OpenAPI document leaves it out). `Honkio\Endpoints::AUTH` lists all of them (`NOT_LAUNCHED` is its deprecated old name).
 
 ### Signing users in
 

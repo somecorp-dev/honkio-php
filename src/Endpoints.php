@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Honkio;
 
 /**
- * Every route the SDK calls: [resource, method, HTTP method, path]. Checked
- * against the committed OpenAPI snapshot by tests/SpecContractTest.php.
+ * Every route the SDK calls: [resource, method, HTTP method, path]. ALL is
+ * checked against the committed OpenAPI snapshot by tests/SpecContractTest.php;
+ * UNCHECKED holds the one route the snapshot leaves out.
  */
 final class Endpoints
 {
@@ -90,20 +91,16 @@ final class Endpoints
         ['sendLimit', 'get', 'GET', '/v1/send-limit'],
         ['topupCapRequests', 'create', 'POST', '/v1/account/topup-cap-requests'],
         ['topupCapRequests', 'list', 'GET', '/v1/account/topup-cap-requests'],
+        ...self::AUTH_APPS,
     ];
 
     /**
-     * HonkIO Auth routes. The /v1/auth-apps routes are in the public OpenAPI
-     * document, and tests/AuthEndpointsTest.php checks them against it; the
-     * export download (GET /v1/auth-exports/{token}) is a single-use link, not
-     * an API-key operation, so the document leaves it out and the test checks
-     * it against the API source. They stay in their own table, apart from ALL,
-     * until the SDK method tables on honkio.ca/docs/sdk list them; the Auth API
-     * reference is at https://honkio.ca/docs/auth/api.
+     * HonkIO Auth's management API, part of ALL. tests/AuthEndpointsTest.php
+     * also checks these against the API's route files.
      *
      * @var list<array{string, string, string, string}>
      */
-    public const AUTH = [
+    private const AUTH_APPS = [
         ['authApps', 'create', 'POST', '/v1/auth-apps'],
         ['authApps', 'list', 'GET', '/v1/auth-apps'],
         ['authApps', 'get', 'GET', '/v1/auth-apps/{id}'],
@@ -162,8 +159,27 @@ final class Endpoints
         ['authApps.exports', 'create', 'POST', '/v1/auth-apps/{id}/exports'],
         ['authApps.exports', 'latest', 'GET', '/v1/auth-apps/{id}/exports/latest'],
         ['authApps.exports', 'get', 'GET', '/v1/auth-apps/{id}/exports/{exportId}'],
+    ];
+
+    /**
+     * Routes the public OpenAPI document leaves out, so SpecContractTest can't
+     * check them: the HonkIO Auth export download (GET /v1/auth-exports/{token}),
+     * a single-use link rather than an API-key operation.
+     * tests/AuthEndpointsTest.php checks it against the API source.
+     *
+     * @var list<array{string, string, string, string}>
+     */
+    public const UNCHECKED = [
         ['authApps.exports', 'download', 'GET', '/v1/auth-exports/{token}'],
     ];
+
+    /**
+     * Every HonkIO Auth route the SDK calls: its ALL entries and the export
+     * download link. The Auth API reference is at https://honkio.ca/docs/auth/api.
+     *
+     * @var list<array{string, string, string, string}>
+     */
+    public const AUTH = [...self::AUTH_APPS, ...self::UNCHECKED];
 
     /**
      * @deprecated 1.x: the old name of AUTH, from before HonkIO Auth launched.
