@@ -2,6 +2,13 @@
 
 Versions are published to Packagist from a read-only mirror by hand; a version without a date is not published yet.
 
+## 0.3.1
+
+### Security
+
+- `var_dump`, `print_r` and `debug_zval_dump` no longer show the API key: `Honkio` and `Honkio\Http\HttpClient` answer with the base URL and `[redacted]`. `Honkio\Auth\HonkioAuth` and `Honkio\Auth\TokenRefresher` do the same for the client secret, and leave out the cache (which holds refreshed tokens).
+- The API key and the client secret are marked `#[\SensitiveParameter]` on the constructors that take them (`Honkio`, `HttpClient`, `HonkioAuth`, `TokenRefresher`), so a stack trace shows `Object(SensitiveParameterValue)` in their place.
+
 ## 0.3.0 (2026-10-31)
 
 ### Added

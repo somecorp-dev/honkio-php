@@ -50,7 +50,7 @@ final class HonkioAuth
      *
      * @throws InvalidArgumentException for a missing or non-https issuer, a missing client id, or no openssl extension
      */
-    public function __construct(array $options)
+    public function __construct(#[\SensitiveParameter] array $options)
     {
         if (!extension_loaded('openssl')) {
             throw new InvalidArgumentException('HonkIO Auth token checks need the PHP openssl extension.');
@@ -93,6 +93,17 @@ final class HonkioAuth
             (bool) ($options['remember_refreshes'] ?? true),
             $breaker,
         );
+    }
+
+    /**
+     * var_dump and print_r show the app, never the client secret or the
+     * cache (which holds keys, discovery and refreshed tokens).
+     *
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array
+    {
+        return ['issuer' => $this->issuer, 'clientId' => $this->clientId, 'refresher' => $this->refresher];
     }
 
     public function issuer(): string

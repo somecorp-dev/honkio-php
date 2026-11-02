@@ -64,12 +64,28 @@ final class TokenRefresher
         private readonly ClientInterface $http,
         private readonly Cache $cache,
         private readonly string $clientId,
-        private readonly ?string $clientSecret,
+        #[\SensitiveParameter] private readonly ?string $clientSecret,
         private readonly \Closure $clock,
         private readonly float $timeout = 10.0,
         private readonly bool $remember = true,
         private readonly ?OutageBreaker $breaker = null,
     ) {
+    }
+
+    /**
+     * var_dump and print_r show the client, never the client secret or the
+     * cache (which holds refreshed tokens).
+     *
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array
+    {
+        return [
+            'clientId' => $this->clientId,
+            'clientSecret' => $this->clientSecret === null ? null : '[redacted]',
+            'timeout' => $this->timeout,
+            'remember' => $this->remember,
+        ];
     }
 
     public function refresh(TokenSet $tokens): RefreshResult

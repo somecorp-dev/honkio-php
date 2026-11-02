@@ -42,7 +42,7 @@ final class HttpClient
      * @throws InvalidArgumentException for a negative $maxRetries or $maxRetryDelay
      */
     public function __construct(
-        private readonly string $apiKey,
+        #[\SensitiveParameter] private readonly string $apiKey,
         private readonly string $baseUrl,
         private readonly ClientInterface $client,
         private readonly float $timeout = 30.0,
@@ -84,6 +84,22 @@ final class HttpClient
         array $objectKeys = [],
     ): mixed {
         return $this->execute($method, $template, $pathParams, $query, $body, $idempotencyKey, $bodyIsList, $objectKeys)[1];
+    }
+
+    /**
+     * var_dump, print_r and debug_zval_dump show the base URL, never the key.
+     *
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array
+    {
+        return [
+            'apiKey' => '[redacted]',
+            'baseUrl' => $this->baseUrl,
+            'timeout' => $this->timeout,
+            'maxRetries' => $this->maxRetries,
+            'maxRetryDelay' => $this->maxRetryDelay,
+        ];
     }
 
     /**

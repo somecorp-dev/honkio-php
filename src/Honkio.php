@@ -37,7 +37,7 @@ use Honkio\Resource\Webhooks;
  */
 final class Honkio
 {
-    public const VERSION = '0.3.0';
+    public const VERSION = '0.3.1';
     public const DEFAULT_BASE_URL = 'https://api.honkio.ca';
 
     public readonly Emails $emails;
@@ -60,6 +60,8 @@ final class Honkio
     /** HonkIO Auth: hosted sign-in apps, their users, organizations and settings. */
     public readonly AuthApps $authApps;
 
+    private readonly string $baseUrl;
+
     /**
      * @param string|null $apiKey Falls back to the HONKIO_API_KEY environment variable.
      * @param array{base_url?: string, timeout?: float|int, http_client?: ClientInterface, max_retries?: int, max_retry_delay?: float|int} $options
@@ -72,7 +74,7 @@ final class Honkio
      *
      * @throws InvalidArgumentException when there is no API key, or a retry option is negative.
      */
-    public function __construct(?string $apiKey = null, array $options = [])
+    public function __construct(#[\SensitiveParameter] ?string $apiKey = null, array $options = [])
     {
         $key = $apiKey;
         if ($key === null || $key === '') {
@@ -113,5 +115,17 @@ final class Honkio
         $this->optInConfirmations = new OptInConfirmations($http);
         $this->webhooks = new Webhooks($http);
         $this->authApps = new AuthApps($http);
+        $this->baseUrl = $baseUrl;
+    }
+
+    /**
+     * var_dump and print_r show the base URL, never the key (which only the
+     * HttpClient holds, and which redacts itself too).
+     *
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array
+    {
+        return ['apiKey' => '[redacted]', 'baseUrl' => $this->baseUrl];
     }
 }
