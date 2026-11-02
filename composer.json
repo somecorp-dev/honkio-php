@@ -13,7 +13,7 @@
     "require": {
         "php": ">=8.2",
         "ext-json": "*",
-        "guzzlehttp/guzzle": "^7.8"
+        "guzzlehttp/guzzle": "^7.8 || ^8.0"
     },
     "suggest": {
         "ext-openssl": "Needed by Honkio\\Auth to check HonkIO Auth tokens (ES256)."
