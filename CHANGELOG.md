@@ -2,7 +2,11 @@
 
 Versions are published to Packagist from a read-only mirror by hand; a version without a date is not published yet.
 
-## 0.3.1
+## 0.3.1 (2026-11-02)
+
+### Changed
+
+- Accepts `guzzlehttp/guzzle` 8 as well as 7 (`^7.8 || ^8.0`).
 
 ### Security
 
