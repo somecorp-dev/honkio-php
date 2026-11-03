@@ -17,6 +17,7 @@ use Honkio\Resource\Consents;
 use Honkio\Resource\Domains;
 use Honkio\Resource\Emails;
 use Honkio\Resource\Messages;
+use Honkio\Resource\Push;
 use Honkio\Resource\OptInConfirmations;
 use Honkio\Resource\PhoneNumbers;
 use Honkio\Resource\SendLimit;
@@ -41,6 +42,8 @@ final class Honkio
     public const DEFAULT_BASE_URL = 'https://api.honkio.ca';
 
     public readonly Emails $emails;
+    /** Push notifications: apps, device tokens and sends. */
+    public readonly Push $push;
     public readonly Batch $batch;
     public readonly Domains $domains;
     public readonly Suppressions $suppressions;
@@ -98,6 +101,7 @@ final class Honkio
         );
 
         $this->emails = new Emails($http);
+        $this->push = new Push($http);
         $this->batch = new Batch($http);
         $this->domains = new Domains($http);
         $this->suppressions = new Suppressions($http);

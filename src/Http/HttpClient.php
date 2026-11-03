@@ -23,10 +23,10 @@ final class HttpClient
     public const DEFAULT_MAX_RETRY_DELAY = 60.0;
 
     /**
-     * The routes that honour Idempotency-Key (api/src/routes/messages and
-     * emails). A call without a key gets a generated one, kept across its retries.
+     * The routes that honour Idempotency-Key (api/src/routes/messages,
+     * emails and push). A call without a key gets a generated one, kept across its retries.
      */
-    private const KEYED_ROUTES = ['POST /v1/messages', 'POST /v1/emails', 'POST /v1/emails/batch'];
+    private const KEYED_ROUTES = ['POST /v1/messages', 'POST /v1/emails', 'POST /v1/emails/batch', 'POST /v1/push'];
 
     /** Nothing was sent or charged, and waiting is the fix: safe to retry on any route. */
     private const RETRY_ALWAYS = ['NUMBER_RATE_LIMITED', 'CARRIER_UNAVAILABLE', 'CARRIER_THROTTLED'];

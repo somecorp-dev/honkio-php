@@ -7,7 +7,7 @@ namespace Honkio;
 /**
  * Every route the SDK calls: [resource, method, HTTP method, path]. ALL is
  * checked against the committed OpenAPI snapshot by tests/SpecContractTest.php;
- * UNCHECKED holds the one route the snapshot leaves out.
+ * UNCHECKED holds the routes the snapshot leaves out.
  */
 final class Endpoints
 {
@@ -169,9 +169,44 @@ final class Endpoints
      *
      * @var list<array{string, string, string, string}>
      */
-    public const UNCHECKED = [
+    public const UNCHECKED_AUTH = [
         ['authApps.exports', 'download', 'GET', '/v1/auth-exports/{token}'],
     ];
+
+    /**
+     * The push notification routes. The product is built but hidden from the
+     * public OpenAPI document until launch (PUSH_ENABLED), so SpecContractTest
+     * can't check them against the snapshot; tests/PushResourcesTest.php checks
+     * them against the Node SDK's route table instead. At launch they move
+     * into ALL.
+     *
+     * @var list<array{string, string, string, string}>
+     */
+    public const PUSH = [
+        ['push', 'send', 'POST', '/v1/push'],
+        ['push', 'get', 'GET', '/v1/push/{id}'],
+        ['push', 'list', 'GET', '/v1/push'],
+        ['push', 'usage', 'GET', '/v1/push/usage'],
+        ['push.apps', 'create', 'POST', '/v1/push/apps'],
+        ['push.apps', 'list', 'GET', '/v1/push/apps'],
+        ['push.apps', 'get', 'GET', '/v1/push/apps/{id}'],
+        ['push.apps', 'update', 'PATCH', '/v1/push/apps/{id}'],
+        ['push.apps', 'delete', 'DELETE', '/v1/push/apps/{id}'],
+        ['push.encryption', 'set', 'POST', '/v1/push/apps/{id}/encryption'],
+        ['push.encryption', 'listKeys', 'GET', '/v1/push/apps/{id}/encryption/keys'],
+        ['push.encryption', 'createKey', 'POST', '/v1/push/apps/{id}/encryption/keys'],
+        ['push.encryption', 'activateKey', 'POST', '/v1/push/apps/{id}/encryption/keys/{kid}/activate'],
+        ['push.devices', 'register', 'PUT', '/v1/push/devices'],
+        ['push.devices', 'list', 'GET', '/v1/push/devices'],
+        ['push.devices', 'delete', 'DELETE', '/v1/push/devices/{id}'],
+    ];
+
+    /**
+     * Every route the SDK calls that the public snapshot does not have.
+     *
+     * @var list<array{string, string, string, string}>
+     */
+    public const UNCHECKED = [...self::UNCHECKED_AUTH, ...self::PUSH];
 
     /**
      * Every HonkIO Auth route the SDK calls: its ALL entries and the export
@@ -179,7 +214,7 @@ final class Endpoints
      *
      * @var list<array{string, string, string, string}>
      */
-    public const AUTH = [...self::AUTH_APPS, ...self::UNCHECKED];
+    public const AUTH = [...self::AUTH_APPS, ...self::UNCHECKED_AUTH];
 
     /**
      * @deprecated 1.x: the old name of AUTH, from before HonkIO Auth launched.

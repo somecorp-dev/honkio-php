@@ -112,8 +112,8 @@ final class AuthEndpointsTest extends TestCase
             Endpoints::ALL,
             static fn (array $e): bool => str_starts_with($e[0], 'authApps'),
         ));
-        $this->assertSame([...$authInAll, ...Endpoints::UNCHECKED], Endpoints::AUTH);
-        $this->assertSame([['authApps.exports', 'download', 'GET', '/v1/auth-exports/{token}']], Endpoints::UNCHECKED);
+        $this->assertSame([...$authInAll, ...Endpoints::UNCHECKED_AUTH], Endpoints::AUTH);
+        $this->assertSame([['authApps.exports', 'download', 'GET', '/v1/auth-exports/{token}']], Endpoints::UNCHECKED_AUTH);
     }
 
     public function testTheOldNameStillWorks(): void
