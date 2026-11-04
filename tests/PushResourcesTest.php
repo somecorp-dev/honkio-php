@@ -92,6 +92,7 @@ final class PushResourcesTest extends TestCase
             'title' => 'Hello',
             'data' => ['orderId' => '42'],
             'thread_id' => 't1',
+            'collapse_key' => 'order-42',
             'fallback' => $fallback,
         ], 'push-1');
 
@@ -104,6 +105,7 @@ final class PushResourcesTest extends TestCase
             'title' => 'Hello',
             'data' => ['orderId' => '42'],
             'thread_id' => 't1',
+            'collapse_key' => 'order-42',
             'fallback' => $fallback,
         ], $mock->jsonBody());
     }
