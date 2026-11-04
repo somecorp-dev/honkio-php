@@ -24,7 +24,7 @@ final class PushEncryption
     }
 
     /**
-     * The ACTIVE and NEXT keys, base64. Live secret keys only.
+     * The active and next keys, base64. Live secret keys only.
      *
      * @return array<mixed>
      */
@@ -34,7 +34,7 @@ final class PushEncryption
     }
 
     /**
-     * Create the NEXT key. Returns its `kid`; read the material with listKeys().
+     * Create the next key. Returns its `kid`; read the material with listKeys().
      *
      * @return array<mixed>
      */
@@ -44,7 +44,7 @@ final class PushEncryption
     }
 
     /**
-     * Make the NEXT key the ACTIVE one.
+     * Make the next key the active one; the previous active key is retired.
      *
      * @return array<mixed>
      */
