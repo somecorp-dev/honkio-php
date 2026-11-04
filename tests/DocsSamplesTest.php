@@ -141,6 +141,26 @@ final class DocsSamplesTest extends TestCase
         self::assertContains('emails->received->list', self::known());
     }
 
+    public function testThePushSamplesUseThePushCalls(): void
+    {
+        $samples = self::samples();
+        $expected = [
+            'pushAppCreate' => 'push->apps->create',
+            'pushDeviceRegister' => 'push->devices->register',
+            'pushSend' => 'push->send',
+            'pushSendFallback' => 'push->send',
+            'pushGet' => 'push->get',
+            'pushEncryptionOn' => 'push->encryption->listKeys',
+        ];
+        foreach ($expected as $name => $call) {
+            self::assertContains($call, self::calls($samples[$name]), $name);
+        }
+        foreach (['laravelPushSend', 'laravelPushSendFallback'] as $name) {
+            self::assertStringContainsString("return ['honkio-push'];", $samples[$name]);
+            self::assertStringContainsString('toHonkioPush(', $samples[$name]);
+        }
+    }
+
     public function testAMisspelledCallIsCaught(): void
     {
         self::assertNotContains('messages->sendd', self::known());
