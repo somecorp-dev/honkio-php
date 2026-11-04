@@ -30,7 +30,7 @@ final class Push
      * `data` is a map of string values; its keys are sent as given. `fallback` is
      * `['sms' => ['to' => ..., 'from' => ..., 'body' => ...]]`, sent as a text
      * when no device accepts the push (the key needs `messages:w`).
-     * `collapse_key` (at most 64 bytes) lets a newer push with the same key
+     * `collapse_key` (1 to 64 visible ASCII characters) lets a newer push with the same key
      * replace an older one not yet shown.
      *
      * @param array<string, mixed> $params
