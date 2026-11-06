@@ -12,10 +12,10 @@ use Honkio\Resource\AuthApps;
 use Honkio\Resource\AutoTopup;
 use Honkio\Resource\Batch;
 use Honkio\Resource\BusinessVerification;
-use Honkio\Resource\ChannelTemplates;
 use Honkio\Resource\ConsentBatches;
 use Honkio\Resource\Consents;
 use Honkio\Resource\Domains;
+use Honkio\Resource\EmailTemplates;
 use Honkio\Resource\Emails;
 use Honkio\Resource\Messages;
 use Honkio\Resource\Push;
@@ -48,10 +48,14 @@ final class Honkio
     public readonly Batch $batch;
     public readonly Domains $domains;
     public readonly Suppressions $suppressions;
-    /** Email templates (/v1/email-templates): templates with an email part, in their email-only shape. */
-    public readonly Templates $templates;
     /** Templates with every part (email, SMS, push) in English and French (/v1/templates). */
-    public readonly ChannelTemplates $channelTemplates;
+    public readonly Templates $templates;
+    /**
+     * Email templates (/v1/email-templates): templates with an email part, in their email-only shape.
+     *
+     * @deprecated Use $templates (/v1/templates).
+     */
+    public readonly EmailTemplates $emailTemplates;
     public readonly Messages $messages;
     public readonly PhoneNumbers $phoneNumbers;
     public readonly TollFreeVerifications $tollFreeVerifications;
@@ -110,7 +114,7 @@ final class Honkio
         $this->domains = new Domains($http);
         $this->suppressions = new Suppressions($http);
         $this->templates = new Templates($http);
-        $this->channelTemplates = new ChannelTemplates($http);
+        $this->emailTemplates = new EmailTemplates($http);
         $this->messages = new Messages($http);
         $this->phoneNumbers = new PhoneNumbers($http);
         $this->tollFreeVerifications = new TollFreeVerifications($http);

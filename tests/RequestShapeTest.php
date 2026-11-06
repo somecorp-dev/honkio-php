@@ -19,8 +19,8 @@ final class RequestShapeTest extends TestCase
     public function testTemplateVariablesStayAnArrayEvenWhenEmpty(): void
     {
         [$honkio, $mock] = MockHttp::honkio($this->ok(2));
-        $honkio->templates->update('welcome', ['variables' => []]);
-        $honkio->templates->create(['name' => 'W', 'variables' => [['key' => 'firstName', 'fallback' => 'friend']]]);
+        $honkio->emailTemplates->update('welcome', ['variables' => []]);
+        $honkio->emailTemplates->create(['name' => 'W', 'variables' => [['key' => 'firstName', 'fallback' => 'friend']]]);
 
         $this->assertSame('{"variables":[]}', (string) $mock->request(0)->getBody());
         $this->assertSame(
