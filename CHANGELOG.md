@@ -2,6 +2,12 @@
 
 Versions are published to Packagist from a read-only mirror by hand; a version without a date is not published yet.
 
+## Unreleased
+
+### Added
+
+- Sending from a stored template on every channel: `messages->send()` and `push->send()` take `template` (a template's id or alias), `variables` and `language` (`en` or `fr`) in place of their own text, and send that template's SMS or push part, rendered. `emails->send()` and `batch->send()` take `language` next to `template`. An empty `variables` array is sent as a JSON object. A language without the part uses the template's default language's; a template with no part for the channel answers `TEMPLATE_CHANNEL_MISSING`.
+
 ## 0.3.1 (2026-11-02)
 
 ### Changed

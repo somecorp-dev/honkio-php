@@ -37,13 +37,15 @@ final class Push
      * (refunded) with {@see cancel()}. `expires_at` (only with `scheduled_at`, 1 minute to
      * 24 hours after it; default `scheduled_at` plus 24 hours) is the latest it may go out:
      * one that cannot fails with `SCHEDULED_SEND_EXPIRED` and is refunded.
+     * In place of `title` and `body`, `template` (a template's id or alias), `variables` and
+     * `language` (`en` or `fr`) send that template's push part, rendered.
      *
      * @param array<string, mixed> $params
      * @return array<mixed>
      */
     public function send(array $params, ?string $idempotencyKey = null): array
     {
-        return $this->http->callArray('POST', '/v1/push', [], [], $params, $idempotencyKey, false, ['data']);
+        return $this->http->callArray('POST', '/v1/push', [], [], $params, $idempotencyKey, false, ['data', 'variables']);
     }
 
     /**

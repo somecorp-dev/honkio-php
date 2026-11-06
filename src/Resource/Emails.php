@@ -16,7 +16,9 @@ final class Emails
     }
 
     /**
-     * Send an email.
+     * Send an email. With `template`, `language` (`en` or `fr`) picks its
+     * language version; a language without an email part uses the default
+     * language's.
      *
      * @param array<string, mixed> $params
      * @return array<mixed>

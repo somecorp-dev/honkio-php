@@ -110,6 +110,14 @@ final class PushResourcesTest extends TestCase
         ], $mock->jsonBody());
     }
 
+    public function testSendFromATemplate(): void
+    {
+        [$honkio, $mock] = MockHttp::honkio([MockHttp::json(202, ['id' => 'ps_1'])]);
+        $honkio->push->send(['app_id' => 'pa_1', 'to' => ['user_id' => 'u_1'], 'template' => 'order-ready', 'variables' => [], 'language' => 'fr']);
+        $this->assertStringContainsString('"variables":{}', (string) $mock->request()->getBody());
+        $this->assertSame('order-ready', $mock->jsonBody()['template']);
+    }
+
     public function testSendGeneratesAnIdempotencyKeyAndKeepsAnEmptyDataAsAnObject(): void
     {
         [$honkio, $mock] = MockHttp::honkio([MockHttp::json(202, ['id' => 'ps_1'])]);

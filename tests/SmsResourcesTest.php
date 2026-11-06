@@ -73,6 +73,20 @@ final class SmsResourcesTest extends TestCase
         $this->assertSame('order-1042', $mock->request()->getHeaderLine('Idempotency-Key'));
     }
 
+    public function testMessagesSendFromATemplateKeepsVariablesAnObject(): void
+    {
+        [$honkio, $mock] = $this->with(['id' => 'msg_1']);
+        $honkio->messages->send(['from' => '+14165550100', 'to' => '+16135550123', 'template' => 'signin-code', 'variables' => ['otpCode' => '482913'], 'language' => 'fr']);
+        $this->assertSame(
+            ['from' => '+14165550100', 'to' => '+16135550123', 'template' => 'signin-code', 'variables' => ['otpCode' => '482913'], 'language' => 'fr'],
+            $mock->jsonBody(),
+        );
+
+        [$honkio, $mock] = $this->with(['id' => 'msg_2']);
+        $honkio->messages->send(['from' => '+14165550100', 'to' => '+16135550123', 'template' => 'notice', 'variables' => []]);
+        $this->assertStringContainsString('"variables":{}', (string) $mock->request()->getBody());
+    }
+
     public function testMessagesGetAndList(): void
     {
         [$honkio, $mock] = MockHttp::honkio([MockHttp::json(200, ['id' => 'm']), MockHttp::json(200, ['data' => []])]);

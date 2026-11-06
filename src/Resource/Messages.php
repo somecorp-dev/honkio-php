@@ -28,12 +28,18 @@ final class Messages
      * default `scheduled_at` plus 24 hours) is the latest it may go out: one
      * that cannot fails with `SCHEDULED_SEND_EXPIRED` and is refunded.
      *
+     * In place of `body`, `template` (a template's id or alias), `variables`
+     * and `language` (`en` or `fr`) send that template's SMS part, rendered:
+     * a live key the published version, a test key the draft. A language
+     * without an SMS part uses the default language's; a template with no
+     * SMS part answers `TEMPLATE_CHANNEL_MISSING`.
+     *
      * @param array<string, mixed> $params
      * @return array<mixed>
      */
     public function send(array $params, ?string $idempotencyKey = null): array
     {
-        return $this->http->callArray('POST', '/v1/messages', [], [], $params, $idempotencyKey);
+        return $this->http->callArray('POST', '/v1/messages', [], [], $params, $idempotencyKey, false, ['variables']);
     }
 
     /**
