@@ -6,7 +6,11 @@ Versions are published to Packagist from a read-only mirror by hand; a version w
 
 ### Added
 
-- Sending from a stored template on every channel: `messages->send()` and `push->send()` take `template` (a template's id or alias), `variables` and `language` (`en` or `fr`) in place of their own text, and send that template's SMS or push part, rendered. `emails->send()` and `batch->send()` take `language` next to `template`. An empty `variables` array is sent as a JSON object. A language without the part uses the template's default language's; a template with no part for the channel answers `TEMPLATE_CHANNEL_MISSING`.
+- Sending from a stored template on every channel: `messages->send()` and `push->send()` take `template` (a template's id or alias), `variables` and `language` (`en` or `fr`) in place of their own text, and send that template's SMS or push part, rendered. `emails->send()` and `batch->send()` take `language` next to `template`. An empty `variables` array is sent as a JSON object. A language without the part uses the template's default language's; a template with no part for the channel answers `TEMPLATE_CHANNEL_MISSING`. A retry with the same Idempotency-Key replays a template SMS (also a group send's members) even after the template was changed or deleted; the same key with another template, other variables or another language is `IDEMPOTENCY_KEY_REUSED`.
+
+### Changed
+
+- `messages->send()` with neither `body` nor `template` still throws `UnprocessableEntityException` (`VALIDATION_ERROR`), but its `details` is now `['formErrors' => [...], 'fieldErrors' => ['body' => [...]]]` rather than a list of JSON Schema errors. `variables` or `language` without a template, or a template together with `body` (or with a push's `title` or `body`), is now refused with `VALIDATION_ERROR`; before, the stray keys were dropped.
 
 ## 0.3.1 (2026-11-02)
 
