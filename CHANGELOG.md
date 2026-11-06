@@ -11,6 +11,7 @@ Versions are published to Packagist from a read-only mirror by hand; a version w
 
 ### Changed
 
+- **Breaking:** push payload encryption now uses a key per device instead of one per app. `push->encryption` (`set()`, `listKeys()`, `createKey()`, `activateKey()`, the per-app key resource, class `PushEncryption`) is removed: push is not launched yet. `push->devices->register()` takes `encryption_public_key` (the public key the HonkIO Swift or Android push package generated on the device; `null` removes the stored key) and the device it returns has `encryption_key_id`. `push->apps->create()` and `push->apps->update()` take `require_encryption`, and a push app has `require_encryption` in place of `encryption_enabled`: `true` refuses a device without a key with `ENCRYPTION_KEY_MISSING`, never sent in plaintext and never charged. Each delivery gains `encrypted`, and a push's `encrypted` is now the app's `require_encryption` when it was sent.
 - `messages->send()` with neither `body` nor `template` still throws `UnprocessableEntityException` (`VALIDATION_ERROR`), but its `details` is now `['formErrors' => [...], 'fieldErrors' => ['body' => [...]]]` rather than a list of JSON Schema errors. `variables` or `language` without a template, or a template together with `body` (or with a push's `title` or `body`), is now refused with `VALIDATION_ERROR`; before, the stray keys were dropped.
 
 ## 0.4.0

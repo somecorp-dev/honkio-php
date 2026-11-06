@@ -15,6 +15,10 @@ final class PushApps
 
     /**
      * Create an app. `apns` is `['key_p8', 'key_id', 'team_id', 'bundle_id']`; `fcm` is `['service_account_json']`.
+     * `require_encryption` true refuses any delivery that cannot be encrypted: a device registered
+     * without `encryption_public_key` is skipped with `ENCRYPTION_KEY_MISSING`, never sent in
+     * plaintext and never charged. False (the default) encrypts for each device that has a key and
+     * sends plaintext to the rest.
      *
      * @param array<string, mixed> $params
      * @return array<mixed>
@@ -46,7 +50,8 @@ final class PushApps
     }
 
     /**
-     * Change an app. Send `apns` or `fcm` to replace that provider's credentials.
+     * Change an app. Send `apns` or `fcm` to replace that provider's credentials, and
+     * `require_encryption` to change whether a device without a key is refused (see {@see create()}).
      *
      * @param array<string, mixed> $params
      * @return array<mixed>

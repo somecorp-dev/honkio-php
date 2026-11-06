@@ -150,7 +150,7 @@ final class DocsSamplesTest extends TestCase
             'pushSend' => 'push->send',
             'pushSendFallback' => 'push->send',
             'pushGet' => 'push->get',
-            'pushEncryptionOn' => 'push->encryption->listKeys',
+            'pushEncryptionOn' => 'push->apps->update',
         ];
         foreach ($expected as $name => $call) {
             self::assertContains($call, self::calls($samples[$name]), $name);

@@ -72,7 +72,7 @@ final class SpecContractTest extends TestCase
             $resources[$property->getName()] = $property->getValue($client);
         }
         $resources['emails.received'] = $client->emails->received;
-        foreach (['apps', 'encryption', 'devices'] as $sub) {
+        foreach (['apps', 'devices'] as $sub) {
             $resources['push.' . $sub] = $client->push->{$sub};
         }
         foreach ((new \ReflectionObject($client->authApps))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
