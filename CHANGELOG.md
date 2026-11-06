@@ -6,6 +6,7 @@ Versions are published to Packagist from a read-only mirror by hand; a version w
 
 ### Added
 
+- Web push (browser notifications), held back until push launches: `push->devices->register()` takes `'platform' => 'web'` with the browser's `subscription` (its `toJSON()`), in place of a `token`; `push->web->setVapidKeys($appId, $params)` generates or imports a push app's VAPID key pair (the private key is never returned), and push apps gain `web` (`vapid_public_key`) and `web_push_subject`.
 - `WebhookEvents::ALL` gains `push_app.vapid_key_replaced`: one event when a push app's web push (VAPID) key pair is replaced, with how many browsers it retired in each mode. Push is held back until it launches.
 - Sending from a stored template on every channel: `messages->send()` and `push->send()` take `template` (a template's id or alias), `variables` and `language` (`en` or `fr`) in place of their own text, and send that template's SMS or push part, rendered. `emails->send()` and `batch->send()` take `language` next to `template`. An empty `variables` array is sent as a JSON object. A language without the part uses the template's default language's; a template with no part for the channel answers `TEMPLATE_CHANNEL_MISSING`. A retry with the same Idempotency-Key replays a template SMS even after the template was changed, republished or deleted; the same key with another template, other variables or another language is `IDEMPOTENCY_KEY_REUSED`. The match is strict: the template's id and its alias, `1` and `"1"` as a variable value, and a language left out and the default language named are different requests. A group send's members are bound the same way: a live group send retried within 24 hours is answered with its first response as before, and a test-mode group send, or a live one retried after those 24 hours, replays its members or answers `IDEMPOTENCY_KEY_REUSED` for different variables.
 - **Breaking:** `templates` now manages all templates (`/v1/templates`): `create()`, `get()`, `list()`, `update()`, `publish()`, `rollback()`, `versions()` and `remove()` for templates with an email, SMS and push part in English, French or both, with a `default_language`. This is how to make an SMS-only, push-only or French template from code. The email-only resource (`/v1/email-templates`, which shows only templates with an email part) is now `emailTemplates` (deprecated), with the same methods as before. The `parts` shape (per language, `email`, `sms` and `push`, each a part or `null`) is declared as PHPStan array shapes on `create()` and `update()`; an empty `parts` array is sent as a JSON object.
@@ -15,6 +16,19 @@ Versions are published to Packagist from a read-only mirror by hand; a version w
 ### Changed
 
 - `messages->send()` with neither `body` nor `template` still throws `UnprocessableEntityException` (`VALIDATION_ERROR`), but its `details` is now `['formErrors' => [...], 'fieldErrors' => ['body' => [...]]]` rather than a list of JSON Schema errors. `variables` or `language` without a template, or a template together with `body` (or with a push's `title` or `body`), is now refused with `VALIDATION_ERROR`; before, the stray keys were dropped.
+
+## 0.4.0
+
+### Added
+
+- Scheduled SMS, as email has it: `$honkio->messages->send([..., 'scheduled_at' => ...])` (an ISO 8601 string or a `DateTimeInterface`, 1 minute to 30 days ahead) accepts the message as `SCHEDULED` and charges it now; `messages->update($id, ['scheduled_at' => ...])` moves it and `messages->cancel($id)` cancels it and refunds the charge. Listed in `Honkio\Endpoints`.
+- Scheduled push on the same contract: `push->send([..., 'scheduled_at' => ...])` comes back `scheduled` and is charged now; `push->update($id, [...])` moves it and `push->cancel($id)` cancels it and refunds what it reserved.
+- A late-send limit for scheduled SMS and push: `messages->send`, `push->send`, `messages->update` and `push->update` take `expires_at` (an ISO 8601 string or a `DateTimeInterface`, only with `scheduled_at`, 1 minute to 24 hours after it; `null` on `update` resets it to the default). A scheduled send that cannot go out by then (by default `scheduled_at` plus 24 hours) fails with `SCHEDULED_SEND_EXPIRED` and is refunded. A due scheduled SMS the carrier throttles or cannot reach is tried again until then instead of failing.
+- `WebhookEvents::ALL` gains `message.cancelled`, `message.rescheduled`, `push.cancelled` and `push.rescheduled`.
+
+### Changed
+
+- The `push->keys` doc comments say the active and next keys, and that making the next key active retires the previous one.
 
 ## 0.3.1 (2026-11-02)
 
