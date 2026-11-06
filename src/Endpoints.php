@@ -102,6 +102,8 @@ final class Endpoints
         ['topupCapRequests', 'create', 'POST', '/v1/account/topup-cap-requests'],
         ['topupCapRequests', 'list', 'GET', '/v1/account/topup-cap-requests'],
         ...self::AUTH_APPS,
+        ...self::PUSH,
+        ...self::NOTIFY,
     ];
 
     /**
@@ -184,11 +186,9 @@ final class Endpoints
     ];
 
     /**
-     * The push notification routes. The product is built but hidden from the
-     * public OpenAPI document until launch (PUSH_ENABLED), so SpecContractTest
-     * can't check them against the snapshot; tests/PushResourcesTest.php checks
-     * them against the Node SDK's route table instead. At launch they move
-     * into ALL.
+     * The push notification routes, part of ALL since push launched
+     * (2026-11-06): SpecContractTest checks them against the snapshot, and
+     * tests/PushResourcesTest.php against the Node SDK's route table.
      *
      * @var list<array{string, string, string, string}>
      */
@@ -211,10 +211,10 @@ final class Endpoints
     ];
 
     /**
-     * The Notify routes (/v1/notify, /v1/notifications, /v1/recipients). Held back
-     * from the public OpenAPI document until NOTIFY_ENABLED, like push, so
-     * tests/NotifyResourcesTest.php checks them against the Node SDK's route
-     * table. At launch they move into ALL.
+     * The Notify routes (/v1/notify, /v1/notifications, /v1/recipients), part
+     * of ALL since Notify launched (2026-11-06): SpecContractTest checks them
+     * against the snapshot, and tests/NotifyResourcesTest.php against the Node
+     * SDK's route table.
      *
      * @var list<array{string, string, string, string}>
      */
@@ -234,7 +234,7 @@ final class Endpoints
      *
      * @var list<array{string, string, string, string}>
      */
-    public const UNCHECKED = [...self::UNCHECKED_AUTH, ...self::PUSH, ...self::NOTIFY];
+    public const UNCHECKED = self::UNCHECKED_AUTH;
 
     /**
      * Every HonkIO Auth route the SDK calls: its ALL entries and the export
