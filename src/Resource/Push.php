@@ -32,6 +32,9 @@ final class Push
      * when no device accepts the push (the key needs `messages:w`).
      * `collapse_key` (1 to 64 visible ASCII characters) lets a newer push with the same key
      * replace an older one not yet shown.
+     * `scheduled_at` (1 minute to 30 days ahead) sends it later: the push comes back with
+     * status `scheduled` and is charged now. Move it with {@see update()} or cancel it
+     * (refunded) with {@see cancel()}.
      *
      * @param array<string, mixed> $params
      * @return array<mixed>
@@ -60,6 +63,25 @@ final class Push
     public function list(array $query = []): array
     {
         return $this->http->callArray('GET', '/v1/push', [], $query);
+    }
+
+    /**
+     * Reschedule a scheduled push: `['scheduled_at' => ...]`.
+     *
+     * @param array<string, mixed> $params
+     * @return array<mixed>
+     */
+    public function update(string $id, array $params): array
+    {
+        return $this->http->callArray('PATCH', '/v1/push/{id}', ['id' => $id], [], $params);
+    }
+
+    /**
+     * Cancel a scheduled push. What it reserved is refunded. Returns null.
+     */
+    public function cancel(string $id): null
+    {
+        return $this->http->callNull('DELETE', '/v1/push/{id}', ['id' => $id]);
     }
 
     /**

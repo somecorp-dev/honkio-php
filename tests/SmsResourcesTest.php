@@ -83,6 +83,48 @@ final class SmsResourcesTest extends TestCase
         $this->assertRequest($mock, 'GET', '/v1/messages?limit=5&status=failed', 1);
     }
 
+    public function testMessagesScheduleUpdateCancel(): void
+    {
+        [$honkio, $mock] = MockHttp::honkio([
+            MockHttp::json(201, ['id' => 'm1', 'status' => 'SCHEDULED', 'scheduled_at' => '2026-10-14T16:30:00.000Z']),
+            MockHttp::json(200, ['id' => 'm1', 'status' => 'SCHEDULED', 'scheduled_at' => '2026-10-15T09:00:00.000Z']),
+            new Response(204),
+        ]);
+        $sent = $honkio->messages->send(
+            ['from' => '+14165550100', 'to' => '+16135550123', 'body' => 'Hi', 'scheduled_at' => new \DateTimeImmutable('2026-10-14T12:30:00-04:00')],
+            'order-1043',
+        );
+        $moved = $honkio->messages->update('m1', ['scheduled_at' => new \DateTimeImmutable('2026-10-15T09:00:00Z')]);
+        $this->assertNull($honkio->messages->cancel('m1'));
+
+        $this->assertSame('SCHEDULED', $sent['status']);
+        $this->assertRequest($mock, 'POST', '/v1/messages');
+        $this->assertSame(
+            ['from' => '+14165550100', 'to' => '+16135550123', 'body' => 'Hi', 'scheduled_at' => '2026-10-14T16:30:00.000Z'],
+            $mock->jsonBody(0),
+        );
+        $this->assertSame('order-1043', $mock->request(0)->getHeaderLine('Idempotency-Key'));
+        $this->assertSame('2026-10-15T09:00:00.000Z', $moved['scheduled_at']);
+        $this->assertRequest($mock, 'PATCH', '/v1/messages/m1', 1);
+        $this->assertSame(['scheduled_at' => '2026-10-15T09:00:00.000Z'], $mock->jsonBody(1));
+        $this->assertRequest($mock, 'DELETE', '/v1/messages/m1', 2);
+    }
+
+    public function testCancellingAMessageThatIsNotScheduledIsAnUnprocessableEntity(): void
+    {
+        [$honkio] = $this->with([
+            'code' => 'MESSAGE_NOT_SCHEDULED',
+            'message' => 'Only messages with status=SCHEDULED can be cancelled or rescheduled',
+            'details' => ['current_status' => 'DELIVERED'],
+        ], 422);
+        try {
+            $honkio->messages->cancel('m1');
+            $this->fail('expected an exception');
+        } catch (UnprocessableEntityException $e) {
+            $this->assertSame('MESSAGE_NOT_SCHEDULED', $e->errorCode);
+        }
+    }
+
     public function testNoConsentIsAnUnprocessableEntity(): void
     {
         [$honkio] = $this->with(['code' => 'NO_CONSENT', 'message' => 'No consent on file.'], 422);

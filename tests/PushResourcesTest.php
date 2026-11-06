@@ -118,6 +118,32 @@ final class PushResourcesTest extends TestCase
         $this->assertStringContainsString('"data":{}', (string) $mock->request()->getBody());
     }
 
+    public function testScheduleUpdateCancel(): void
+    {
+        [$honkio, $mock] = MockHttp::honkio([
+            MockHttp::json(202, ['id' => 'ps_1', 'status' => 'scheduled', 'scheduled_at' => '2026-11-06T14:00:00.000Z']),
+            MockHttp::json(200, ['id' => 'ps_1', 'status' => 'scheduled', 'scheduled_at' => '2026-11-07T14:00:00.000Z']),
+            new Response(204),
+        ]);
+        $push = $honkio->push->send([
+            'app_id' => 'pa_1',
+            'to' => ['user_id' => 'u_1'],
+            'body' => 'Your table is ready',
+            'scheduled_at' => new \DateTimeImmutable('2026-11-06T09:00:00-05:00'),
+        ], 'push-2');
+        $moved = $honkio->push->update('ps_1', ['scheduled_at' => new \DateTimeImmutable('2026-11-07T14:00:00Z')]);
+        $this->assertNull($honkio->push->cancel('ps_1'));
+
+        $this->assertSame('scheduled', $push['status']);
+        $this->assertRequest($mock, 'POST', '/v1/push');
+        $this->assertSame('2026-11-06T14:00:00.000Z', $mock->jsonBody(0)['scheduled_at']);
+        $this->assertSame('push-2', $mock->request(0)->getHeaderLine('Idempotency-Key'));
+        $this->assertSame('2026-11-07T14:00:00.000Z', $moved['scheduled_at']);
+        $this->assertRequest($mock, 'PATCH', '/v1/push/ps_1', 1);
+        $this->assertSame(['scheduled_at' => '2026-11-07T14:00:00.000Z'], $mock->jsonBody(1));
+        $this->assertRequest($mock, 'DELETE', '/v1/push/ps_1', 2);
+    }
+
     public function testGetListUsage(): void
     {
         [$honkio, $mock] = MockHttp::honkio([
@@ -146,7 +172,7 @@ final class PushResourcesTest extends TestCase
         $php = array_map(static fn (array $r): string => "$r[2] $r[3]", Endpoints::PUSH);
         sort($node);
         sort($php);
-        $this->assertCount(16, $node);
+        $this->assertCount(18, $node);
         $this->assertSame($node, $php);
     }
 }
