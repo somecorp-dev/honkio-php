@@ -7,15 +7,12 @@ namespace Honkio\Resource;
 use Honkio\Http\HttpClient;
 use Honkio\Resource\Push\PushApps;
 use Honkio\Resource\Push\PushDevices;
-use Honkio\Resource\Push\PushEncryption;
 use Honkio\Resource\Push\PushWeb;
 
 final class Push
 {
     /** Push apps: the APNs and FCM credentials a push is sent with. */
     public readonly PushApps $apps;
-    /** Payload encryption for an app. Live keys only. */
-    public readonly PushEncryption $encryption;
     /** Web push (browser notifications): the app's VAPID key pair. Live keys only. */
     public readonly PushWeb $web;
     /** Device tokens, registered per user. */
@@ -24,7 +21,6 @@ final class Push
     public function __construct(private readonly HttpClient $http)
     {
         $this->apps = new PushApps($http);
-        $this->encryption = new PushEncryption($http);
         $this->web = new PushWeb($http);
         $this->devices = new PushDevices($http);
     }

@@ -31,6 +31,7 @@ final class PushResourcesTest extends TestCase
             'name' => 'Acme',
             'apns' => ['key_p8' => 'P8', 'key_id' => 'K1', 'team_id' => 'T1', 'bundle_id' => 'ca.acme.app'],
             'fcm' => ['service_account_json' => '{}'],
+            'require_encryption' => true,
         ];
         $this->assertSame(['id' => 'pa_1'], $honkio->push->apps->create($params));
         $this->assertRequest($mock, 'POST', '/v1/push/apps', 0);
@@ -39,47 +40,41 @@ final class PushResourcesTest extends TestCase
         $this->assertRequest($mock, 'GET', '/v1/push/apps?limit=5', 1);
         $honkio->push->apps->get('pa_1');
         $this->assertRequest($mock, 'GET', '/v1/push/apps/pa_1', 2);
-        $honkio->push->apps->update('pa_1', ['name' => 'Renamed', 'placeholder_body' => null]);
+        $update = ['name' => 'Renamed', 'placeholder_body' => null, 'require_encryption' => false];
+        $honkio->push->apps->update('pa_1', $update);
         $this->assertRequest($mock, 'PATCH', '/v1/push/apps/pa_1', 3);
-        $this->assertSame(['name' => 'Renamed', 'placeholder_body' => null], $mock->jsonBody(3));
+        $this->assertSame($update, $mock->jsonBody(3));
         $this->assertNull($honkio->push->apps->delete('pa_1'));
         $this->assertRequest($mock, 'DELETE', '/v1/push/apps/pa_1', 4);
-    }
-
-    public function testEncryption(): void
-    {
-        [$honkio, $mock] = MockHttp::honkio([
-            MockHttp::json(200, ['id' => 'pa_1']),
-            MockHttp::json(200, ['data' => []]),
-            MockHttp::json(201, ['kid' => 'k_2']),
-            MockHttp::json(200, ['kid' => 'k_2']),
-        ]);
-        $honkio->push->encryption->set('pa_1', true);
-        $this->assertRequest($mock, 'POST', '/v1/push/apps/pa_1/encryption', 0);
-        $this->assertSame(['enabled' => true], $mock->jsonBody(0));
-        $honkio->push->encryption->listKeys('pa_1');
-        $this->assertRequest($mock, 'GET', '/v1/push/apps/pa_1/encryption/keys', 1);
-        $honkio->push->encryption->createKey('pa_1');
-        $this->assertRequest($mock, 'POST', '/v1/push/apps/pa_1/encryption/keys', 2);
-        $honkio->push->encryption->activateKey('pa_1', 'k_2');
-        $this->assertRequest($mock, 'POST', '/v1/push/apps/pa_1/encryption/keys/k_2/activate', 3);
     }
 
     public function testDevices(): void
     {
         [$honkio, $mock] = MockHttp::honkio([
-            MockHttp::json(200, ['id' => 'pd_1']),
+            MockHttp::json(200, ['id' => 'pd_1', 'encryption_key_id' => 'kid_1']),
+            MockHttp::json(200, ['id' => 'pd_1', 'encryption_key_id' => null]),
             MockHttp::json(200, ['data' => []]),
             new Response(204),
         ]);
-        $device = ['app_id' => 'pa_1', 'token' => 'tok', 'platform' => 'ios', 'user_id' => 'u_1', 'apns_environment' => 'sandbox'];
-        $honkio->push->devices->register($device);
+        $device = [
+            'app_id' => 'pa_1',
+            'token' => 'tok',
+            'platform' => 'ios',
+            'user_id' => 'u_1',
+            'apns_environment' => 'sandbox',
+            'encryption_public_key' => 'BPub',
+        ];
+        $this->assertSame('kid_1', $honkio->push->devices->register($device)['encryption_key_id']);
         $this->assertRequest($mock, 'PUT', '/v1/push/devices', 0);
         $this->assertSame($device, $mock->jsonBody(0));
+        // An explicit null removes the stored key.
+        $removed = ['app_id' => 'pa_1', 'token' => 'tok', 'platform' => 'android', 'user_id' => 'u_1', 'encryption_public_key' => null];
+        $honkio->push->devices->register($removed);
+        $this->assertSame($removed, $mock->jsonBody(1));
         $honkio->push->devices->list(['app_id' => 'pa_1', 'user_id' => 'u_1', 'active' => true]);
-        $this->assertRequest($mock, 'GET', '/v1/push/devices?app_id=pa_1&user_id=u_1&active=true', 1);
+        $this->assertRequest($mock, 'GET', '/v1/push/devices?app_id=pa_1&user_id=u_1&active=true', 2);
         $this->assertNull($honkio->push->devices->delete('pd_1'));
-        $this->assertRequest($mock, 'DELETE', '/v1/push/devices/pd_1', 2);
+        $this->assertRequest($mock, 'DELETE', '/v1/push/devices/pd_1', 3);
     }
 
     public function testWebDevicesAndVapidKeys(): void
@@ -227,7 +222,7 @@ final class PushResourcesTest extends TestCase
         $php = array_map(static fn (array $r): string => "$r[2] $r[3]", Endpoints::PUSH);
         sort($node);
         sort($php);
-        $this->assertCount(19, $node);
+        $this->assertCount(15, $node);
         $this->assertSame($node, $php);
     }
 }

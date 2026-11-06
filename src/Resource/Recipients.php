@@ -58,7 +58,7 @@ final class Recipients
     }
 
     /**
-     * Delete the profile and unregister that user's push devices (which needs push delete
+     * Delete the profile and unregister that user's push devices (which needs push_devices delete
      * permission too). Returns null.
      */
     public function delete(string $userId): null

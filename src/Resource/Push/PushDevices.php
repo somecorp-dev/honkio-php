@@ -15,9 +15,14 @@ final class PushDevices
 
     /**
      * Register (or refresh) a device token: `app_id`, `token`, `platform` ('ios'|'android'),
-     * `user_id`, and `apns_environment` ('sandbox'|'production', required for iOS). A browser
+     * `user_id`, `apns_environment` ('sandbox'|'production', required for iOS), and
+     * `encryption_public_key`: the key the HonkIO Swift or Android push package generated on the
+     * device (base64url, no padding, of the 65-byte uncompressed P-256 point). Pushes to the device
+     * are then encrypted to it. A new key replaces the stored one, leaving it out keeps it, and null
+     * removes it. The device comes back with `encryption_key_id`, never the key. A browser
      * registers with `platform` 'web' and `subscription` in place of `token`: the browser's
-     * PushSubscription as its toJSON() gives it (`endpoint`, `keys` with `p256dh` and `auth`).
+     * PushSubscription as its toJSON() gives it (`endpoint`, `keys` with `p256dh` and `auth`). A
+     * browser takes no `encryption_public_key`: web push is encrypted to it (RFC 8291).
      *
      * @param array<string, mixed> $params
      * @return array<mixed>
