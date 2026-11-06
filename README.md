@@ -133,9 +133,9 @@ $honkio->emails->send($params, idempotencyKey: 'welcome-user-42');
 
 ## Request shapes
 
-Parameters are arrays with the API's snake_case keys (`scheduled_at`, `is_commercial`, `reply_to`). A key you leave out is not sent; a key set to `null` is sent as JSON null, which clears a nullable field (`$honkio->templates->update('welcome', ['html' => null])`). In query parameters `null` means "not given" and is left out. A `DateTimeInterface` is converted to UTC and sent as ISO 8601 with a `Z` suffix (`2026-10-14T16:30:00.000Z`). The fields the API declares as plain dates (`date_from` and `date_to` on `messages->list`, `last_transaction_date` on `consents->create`) take a `YYYY-MM-DD` string; a `DateTimeInterface` passed there is sent as its UTC date.
+Parameters are arrays with the API's snake_case keys (`scheduled_at`, `is_commercial`, `reply_to`). A key you leave out is not sent; a key set to `null` is sent as JSON null, which clears a nullable field (`$honkio->templates->update('welcome', ['from_address' => null])`). In query parameters `null` means "not given" and is left out. A `DateTimeInterface` is converted to UTC and sent as ISO 8601 with a `Z` suffix (`2026-10-14T16:30:00.000Z`). The fields the API declares as plain dates (`date_from` and `date_to` on `messages->list`, `last_transaction_date` on `consents->create`) take a `YYYY-MM-DD` string; a `DateTimeInterface` passed there is sent as its UTC date.
 
-An empty array for an object-typed field is sent as `[]`, not `{}`; pass `new \stdClass()` for an empty object. The one exception is `emails->send` and `batch->send`, where an empty `variables` or `headers` map is always sent as `{}`. (On `templates` and `emails->received->simulate` the same keys are lists, and stay lists.)
+An empty array for an object-typed field is sent as `[]`, not `{}`; pass `new \stdClass()` for an empty object. The one exception is `emails->send` and `batch->send`, where an empty `variables` or `headers` map is always sent as `{}`. (On `templates`, `emailTemplates` and `emails->received->simulate` the same keys are lists, and stay lists.)
 
 Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=b`). Ids and other path values are separate string arguments: `$honkio->webhooks->update($id, ['active' => false])`. Deletes return `null`.
 
@@ -160,18 +160,18 @@ Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=
 | `batch` | `send($emails, $idempotencyKey)`: a list of up to 100 emails, or `['template' => ..., 'recipients' => [...]]` for up to 500 recipients |
 | `domains` | `create($params)`, `get($id)`, `list()`, `update($id, $params)`, `verify($id)`, `remove($id)` |
 | `suppressions` | `create(['email_address' => ...])`, `list($query)`, `remove($emailAddress)` |
-| `templates` | Email templates (`/v1/email-templates`): `create`, `get($idOrAlias)`, `list`, `update`, `publish`, `rollback($idOrAlias, ['version' => 2])`, `versions`, `remove` |
-| `channelTemplates` | Templates with email and SMS parts in English and French (`/v1/templates`): `create`, `get($idOrAlias)`, `list`, `update`, `publish`, `rollback($idOrAlias, ['version' => 2])`, `versions`, `remove`; see [Templates](#templates) |
+| `templates` | Templates with email, SMS and push parts in English and French (`/v1/templates`): `create`, `get($idOrAlias)`, `list`, `update`, `publish`, `rollback($idOrAlias, ['version' => 2])`, `versions`, `remove`; see [Templates](#templates) |
+| `emailTemplates` | Deprecated: use `templates`. The email-only shape (`/v1/email-templates`) of the templates that have an email part, with the same methods |
 | `authApps` | HonkIO Auth; see [HonkIO Auth](#honkio-auth) |
 
 `Honkio\Endpoints::ALL` lists every route the SDK calls as `[resource, method, HTTP method, path]`, except the HonkIO Auth export download link, which is in `Honkio\Endpoints::UNCHECKED`.
 
 ### Templates
 
-A template holds a part for each channel you send it on (`email`, `sms`), in English, French or both. `channelTemplates` makes and edits any template, including an SMS-only or French one; `templates` keeps the email-only shape for templates with an email part.
+A template holds a part for each channel you send it on (`email`, `sms`, `push`), in English, French or both. `templates` makes and edits any template, including an SMS-only or French one. `emailTemplates` (deprecated) keeps the older email-only shape for templates with an email part.
 
 ```php
-$honkio->channelTemplates->create([
+$honkio->templates->create([
     'name' => 'Sign-in code',
     'alias' => 'signin-code',
     'default_language' => 'en',
@@ -181,7 +181,7 @@ $honkio->channelTemplates->create([
         'fr' => ['sms' => ['text' => 'Votre code Acme : {{ code }}']],
     ],
 ]);
-$honkio->channelTemplates->publish('signin-code'); // live keys only; a test key sends the draft
+$honkio->templates->publish('signin-code'); // live keys only; a test key sends the draft
 
 $honkio->messages->send(['from' => '+1416XXXXXXX', 'to' => '+1613XXXXXXX', 'template' => 'signin-code', 'variables' => ['code' => '123456'], 'language' => 'fr']);
 ```
