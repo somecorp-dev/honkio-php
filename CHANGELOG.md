@@ -11,6 +11,7 @@ Versions are published to Packagist from a read-only mirror by hand; a version w
 
 ### Changed
 
+- Scheduling an SMS (`messages->send()` with `scheduled_at`, or a scheduled group send) can now be refused with `429 SCHEDULED_LIMIT_REACHED`: an account holds at most 10,000 scheduled live messages and 1,000 scheduled test messages at once, one per member of a scheduled group send. `details` carries `mode`, `limit`, `scheduled` and `requested`; nothing is scheduled or charged. It is never retried.
 - `messages->send()` with neither `body` nor `template` still throws `UnprocessableEntityException` (`VALIDATION_ERROR`), but its `details` is now `['formErrors' => [...], 'fieldErrors' => ['body' => [...]]]` rather than a list of JSON Schema errors. `variables` or `language` without a template, or a template together with `body` (or with a push's `title` or `body`), is now refused with `VALIDATION_ERROR`; before, the stray keys were dropped.
 
 ## 0.4.0
