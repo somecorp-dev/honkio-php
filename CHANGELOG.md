@@ -15,6 +15,19 @@ Versions are published to Packagist from a read-only mirror by hand; a version w
 
 - `messages->send()` with neither `body` nor `template` still throws `UnprocessableEntityException` (`VALIDATION_ERROR`), but its `details` is now `['formErrors' => [...], 'fieldErrors' => ['body' => [...]]]` rather than a list of JSON Schema errors. `variables` or `language` without a template, or a template together with `body` (or with a push's `title` or `body`), is now refused with `VALIDATION_ERROR`; before, the stray keys were dropped.
 
+## 0.4.0
+
+### Added
+
+- Scheduled SMS, as email has it: `$honkio->messages->send([..., 'scheduled_at' => ...])` (an ISO 8601 string or a `DateTimeInterface`, 1 minute to 30 days ahead) accepts the message as `SCHEDULED` and charges it now; `messages->update($id, ['scheduled_at' => ...])` moves it and `messages->cancel($id)` cancels it and refunds the charge. Listed in `Honkio\Endpoints`.
+- Scheduled push on the same contract: `push->send([..., 'scheduled_at' => ...])` comes back `scheduled` and is charged now; `push->update($id, [...])` moves it and `push->cancel($id)` cancels it and refunds what it reserved.
+- A late-send limit for scheduled SMS and push: `messages->send`, `push->send`, `messages->update` and `push->update` take `expires_at` (an ISO 8601 string or a `DateTimeInterface`, only with `scheduled_at`, 1 minute to 24 hours after it; `null` on `update` resets it to the default). A scheduled send that cannot go out by then (by default `scheduled_at` plus 24 hours) fails with `SCHEDULED_SEND_EXPIRED` and is refunded. A due scheduled SMS the carrier throttles or cannot reach is tried again until then instead of failing.
+- `WebhookEvents::ALL` gains `message.cancelled`, `message.rescheduled`, `push.cancelled` and `push.rescheduled`.
+
+### Changed
+
+- The `push->keys` doc comments say the active and next keys, and that making the next key active retires the previous one.
+
 ## 0.3.1 (2026-11-02)
 
 ### Changed
