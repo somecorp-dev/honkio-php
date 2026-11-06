@@ -200,6 +200,7 @@ final class Endpoints
         ['push.encryption', 'listKeys', 'GET', '/v1/push/apps/{id}/encryption/keys'],
         ['push.encryption', 'createKey', 'POST', '/v1/push/apps/{id}/encryption/keys'],
         ['push.encryption', 'activateKey', 'POST', '/v1/push/apps/{id}/encryption/keys/{kid}/activate'],
+        ['push.web', 'setVapidKeys', 'POST', '/v1/push/apps/{id}/web/vapid-keys'],
         ['push.devices', 'register', 'PUT', '/v1/push/devices'],
         ['push.devices', 'list', 'GET', '/v1/push/devices'],
         ['push.devices', 'delete', 'DELETE', '/v1/push/devices/{id}'],

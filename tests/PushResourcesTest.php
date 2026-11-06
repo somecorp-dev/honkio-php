@@ -82,6 +82,27 @@ final class PushResourcesTest extends TestCase
         $this->assertRequest($mock, 'DELETE', '/v1/push/devices/pd_1', 2);
     }
 
+    public function testWebDevicesAndVapidKeys(): void
+    {
+        [$honkio, $mock] = MockHttp::honkio([
+            MockHttp::json(200, ['id' => 'pd_1']),
+            MockHttp::json(200, ['id' => 'pa_1']),
+            MockHttp::json(200, ['id' => 'pa_1']),
+        ]);
+        $device = [
+            'app_id' => 'pa_1', 'platform' => 'web', 'user_id' => 'u_1',
+            'subscription' => ['endpoint' => 'https://fcm.googleapis.com/fcm/send/abc', 'keys' => ['p256dh' => 'BPk', 'auth' => 'au']],
+        ];
+        $honkio->push->devices->register($device);
+        $this->assertRequest($mock, 'PUT', '/v1/push/devices', 0);
+        $this->assertSame($device, $mock->jsonBody(0));
+        $honkio->push->web->setVapidKeys('pa_1');
+        $this->assertRequest($mock, 'POST', '/v1/push/apps/pa_1/web/vapid-keys', 1);
+        $this->assertSame('{}', (string) $mock->request(1)->getBody());
+        $honkio->push->web->setVapidKeys('pa_1', ['public_key' => 'BPub', 'private_key' => 'priv', 'subject' => null]);
+        $this->assertSame(['public_key' => 'BPub', 'private_key' => 'priv', 'subject' => null], $mock->jsonBody(2));
+    }
+
     public function testSendWithAFallback(): void
     {
         $fallback = ['sms' => ['to' => '+14165550100', 'from' => '+14165550199', 'body' => 'Hi']];
@@ -206,7 +227,7 @@ final class PushResourcesTest extends TestCase
         $php = array_map(static fn (array $r): string => "$r[2] $r[3]", Endpoints::PUSH);
         sort($node);
         sort($php);
-        $this->assertCount(18, $node);
+        $this->assertCount(19, $node);
         $this->assertSame($node, $php);
     }
 }

@@ -8,6 +8,7 @@ use Honkio\Http\HttpClient;
 use Honkio\Resource\Push\PushApps;
 use Honkio\Resource\Push\PushDevices;
 use Honkio\Resource\Push\PushEncryption;
+use Honkio\Resource\Push\PushWeb;
 
 final class Push
 {
@@ -15,6 +16,8 @@ final class Push
     public readonly PushApps $apps;
     /** Payload encryption for an app. Live keys only. */
     public readonly PushEncryption $encryption;
+    /** Web push (browser notifications): the app's VAPID key pair. Live keys only. */
+    public readonly PushWeb $web;
     /** Device tokens, registered per user. */
     public readonly PushDevices $devices;
 
@@ -22,6 +25,7 @@ final class Push
     {
         $this->apps = new PushApps($http);
         $this->encryption = new PushEncryption($http);
+        $this->web = new PushWeb($http);
         $this->devices = new PushDevices($http);
     }
 

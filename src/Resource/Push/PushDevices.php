@@ -15,7 +15,9 @@ final class PushDevices
 
     /**
      * Register (or refresh) a device token: `app_id`, `token`, `platform` ('ios'|'android'),
-     * `user_id`, and `apns_environment` ('sandbox'|'production', required for iOS).
+     * `user_id`, and `apns_environment` ('sandbox'|'production', required for iOS). A browser
+     * registers with `platform` 'web' and `subscription` in place of `token`: the browser's
+     * PushSubscription as its toJSON() gives it (`endpoint`, `keys` with `p256dh` and `auth`).
      *
      * @param array<string, mixed> $params
      * @return array<mixed>
