@@ -149,15 +149,15 @@ final class EmailResourcesTest extends TestCase
         $this->assertRequest($mock, 'DELETE', '/v1/email-suppressions/a%40b.ca', 2);
     }
 
-    public function testTemplatesUpdateCanClearAFieldWithNull(): void
+    public function testEmailTemplatesUpdateCanClearAFieldWithNull(): void
     {
         [$honkio, $mock] = MockHttp::honkio([MockHttp::json(200, ['id' => 't1'])]);
-        $honkio->templates->update('tpl', ['html' => null]);
+        $honkio->emailTemplates->update('tpl', ['html' => null]);
 
         $this->assertSame('{"html":null}', (string) $mock->request()->getBody());
     }
 
-    public function testTemplatesKeepVariablesKeysAsGiven(): void
+    public function testEmailTemplatesKeepVariablesKeysAsGiven(): void
     {
         [$honkio, $mock] = MockHttp::honkio([
             MockHttp::json(200, ['id' => 't1']),
@@ -169,14 +169,14 @@ final class EmailResourcesTest extends TestCase
             MockHttp::json(200, ['data' => []]),
             new Response(204),
         ]);
-        $honkio->templates->create(['name' => 'Welcome', 'variables' => [['key' => 'firstName']]]);
-        $honkio->templates->get('welcome');
-        $honkio->templates->list(['limit' => 2]);
-        $honkio->templates->update('welcome', ['subject' => 'Hi {{{firstName}}}']);
-        $honkio->templates->publish('welcome');
-        $honkio->templates->rollback('welcome', ['version' => 2]);
-        $honkio->templates->versions('welcome');
-        $this->assertNull($honkio->templates->remove('welcome'));
+        $honkio->emailTemplates->create(['name' => 'Welcome', 'variables' => [['key' => 'firstName']]]);
+        $honkio->emailTemplates->get('welcome');
+        $honkio->emailTemplates->list(['limit' => 2]);
+        $honkio->emailTemplates->update('welcome', ['subject' => 'Hi {{{firstName}}}']);
+        $honkio->emailTemplates->publish('welcome');
+        $honkio->emailTemplates->rollback('welcome', ['version' => 2]);
+        $honkio->emailTemplates->versions('welcome');
+        $this->assertNull($honkio->emailTemplates->remove('welcome'));
 
         $this->assertSame(['name' => 'Welcome', 'variables' => [['key' => 'firstName']]], $mock->jsonBody());
         $expected = [
@@ -191,7 +191,7 @@ final class EmailResourcesTest extends TestCase
         $this->assertSame(['version' => 2], $mock->jsonBody(5));
     }
 
-    public function testChannelTemplatesCoverEveryOperationOnV1Templates(): void
+    public function testTemplatesCoverEveryOperationOnV1Templates(): void
     {
         [$honkio, $mock] = MockHttp::honkio([
             MockHttp::json(201, ['id' => 'tpl_1', 'object' => 'template']),
@@ -207,17 +207,17 @@ final class EmailResourcesTest extends TestCase
             'fr' => ['sms' => ['text' => 'Votre code : {{ code }}'], 'push' => ['title' => null, 'body' => 'Code : {{ code }}']],
             'en' => ['email' => ['subject' => 'Your code', 'text' => 'Code: {{ code }}'], 'sms' => ['text' => 'Code: {{ code }}']],
         ];
-        $created = $honkio->channelTemplates->create([
+        $created = $honkio->templates->create([
             'name' => 'Sign-in code', 'alias' => 'signin-code', 'default_language' => 'fr',
             'from_address' => null, 'variables' => [['key' => 'code']], 'parts' => $parts,
         ]);
-        $honkio->channelTemplates->get('signin-code');
-        $honkio->channelTemplates->list(['limit' => 2, 'cursor' => 'c1']);
-        $honkio->channelTemplates->update('signin-code', ['default_language' => 'en', 'parts' => ['en' => ['email' => null], 'fr' => null]]);
-        $honkio->channelTemplates->publish('signin-code');
-        $honkio->channelTemplates->rollback('signin-code', ['version' => 2]);
-        $honkio->channelTemplates->versions('signin-code');
-        $this->assertNull($honkio->channelTemplates->remove('signin-code'));
+        $honkio->templates->get('signin-code');
+        $honkio->templates->list(['limit' => 2, 'cursor' => 'c1']);
+        $honkio->templates->update('signin-code', ['default_language' => 'en', 'parts' => ['en' => ['email' => null], 'fr' => null]]);
+        $honkio->templates->publish('signin-code');
+        $honkio->templates->rollback('signin-code', ['version' => 2]);
+        $honkio->templates->versions('signin-code');
+        $this->assertNull($honkio->templates->remove('signin-code'));
 
         $this->assertSame(['id' => 'tpl_1', 'object' => 'template'], $created);
         $this->assertSame([
@@ -237,10 +237,10 @@ final class EmailResourcesTest extends TestCase
         $this->assertSame(['version' => 2], $mock->jsonBody(5));
     }
 
-    public function testChannelTemplatesSendEmptyPartsAsAnObject(): void
+    public function testTemplatesSendEmptyPartsAsAnObject(): void
     {
         [$honkio, $mock] = MockHttp::honkio([MockHttp::json(200, ['id' => 'tpl_1'])]);
-        $honkio->channelTemplates->update('signin-code', ['name' => 'Code', 'parts' => []]);
+        $honkio->templates->update('signin-code', ['name' => 'Code', 'parts' => []]);
 
         $this->assertSame('{"name":"Code","parts":{}}', (string) $mock->request()->getBody());
     }
