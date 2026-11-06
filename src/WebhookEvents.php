@@ -59,6 +59,7 @@ final class WebhookEvents
         'push.rescheduled',
         'push_device.deactivated',
         'push_app.credentials_invalid',
+        'push_app.vapid_key_replaced',
         'notification.delivered',
         'notification.failed',
         'user.created',
