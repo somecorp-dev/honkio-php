@@ -39,7 +39,7 @@ use Honkio\Resource\Webhooks;
  */
 final class Honkio
 {
-    public const VERSION = '0.3.1';
+    public const VERSION = '0.4.0';
     public const DEFAULT_BASE_URL = 'https://api.honkio.ca';
 
     public readonly Emails $emails;
