@@ -143,7 +143,7 @@ Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=
 
 | Property | Methods |
 |---|---|
-| `messages` (SMS) | `send($params, $idempotencyKey)` (the message plus `estimated_send_at`; `scheduled_at` sends it later), `get($id)`, `list($query)`, `update($id, $params)` (reschedule), `cancel($id)` (a scheduled message, refunded) |
+| `messages` (SMS) | `send($params, $idempotencyKey)` (the message plus `estimated_send_at`; `scheduled_at` sends it later, `expires_at` is the latest it may go out, by default `scheduled_at` plus 24 hours, else it fails with `SCHEDULED_SEND_EXPIRED` and is refunded), `get($id)`, `list($query)`, `update($id, $params)` (reschedule; `expires_at` null resets the deadline), `cancel($id)` (a scheduled message, refunded) |
 | `phoneNumbers` | `areaCodes()`, `search($query)` (`area_codes` may be a list), `provision($params)` (live keys; charges your balance), `list()`, `get($id)`, `release($id)` |
 | `tollFreeVerifications` | `options()`, `create($params)`, `update($id, $params)`, `submit($id)`, `cancel($id)`, `get($id)`, `list($query)` |
 | `businessVerification` | `get()` (null before a profile is saved), `save($params)`, `submit()` |

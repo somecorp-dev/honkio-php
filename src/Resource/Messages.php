@@ -24,6 +24,9 @@ final class Messages
      * Pass `scheduled_at` (1 minute to 30 days ahead) to send it later: the
      * message comes back with status `SCHEDULED` and is charged now. Move it
      * with {@see update()} or cancel it (refunded) with {@see cancel()}.
+     * `expires_at` (only with `scheduled_at`, 1 minute to 24 hours after it;
+     * default `scheduled_at` plus 24 hours) is the latest it may go out: one
+     * that cannot fails with `SCHEDULED_SEND_EXPIRED` and is refunded.
      *
      * @param array<string, mixed> $params
      * @return array<mixed>
@@ -56,7 +59,9 @@ final class Messages
     }
 
     /**
-     * Reschedule a scheduled message: `['scheduled_at' => ...]`.
+     * Reschedule a scheduled message: `['scheduled_at' => ..., 'expires_at' => ...]`.
+     * `expires_at` is optional: null resets it to `scheduled_at` plus 24 hours;
+     * left out, a stored one is kept while it still fits the new `scheduled_at`.
      *
      * @param array<string, mixed> $params
      * @return array<mixed>

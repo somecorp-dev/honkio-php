@@ -144,6 +144,32 @@ final class PushResourcesTest extends TestCase
         $this->assertRequest($mock, 'DELETE', '/v1/push/ps_1', 2);
     }
 
+    public function testExpiresAtOnSendAndUpdate(): void
+    {
+        [$honkio, $mock] = MockHttp::honkio([
+            MockHttp::json(202, ['id' => 'ps_1', 'status' => 'scheduled', 'expires_at' => '2026-11-06T16:00:00.000Z']),
+            MockHttp::json(200, ['id' => 'ps_1', 'status' => 'scheduled', 'expires_at' => '2026-11-07T15:00:00.000Z']),
+            MockHttp::json(200, ['id' => 'ps_1', 'status' => 'scheduled', 'expires_at' => null]),
+        ]);
+        $honkio->push->send([
+            'app_id' => 'pa_1',
+            'to' => ['user_id' => 'u_1'],
+            'body' => 'Your table is ready',
+            'scheduled_at' => new \DateTimeImmutable('2026-11-06T09:00:00-05:00'),
+            'expires_at' => new \DateTimeImmutable('2026-11-06T11:00:00-05:00'),
+        ], 'push-3');
+        $moved = $honkio->push->update('ps_1', ['scheduled_at' => '2026-11-07T14:00:00Z', 'expires_at' => '2026-11-07T15:00:00Z']);
+        $reset = $honkio->push->update('ps_1', ['scheduled_at' => '2026-11-07T14:00:00Z', 'expires_at' => null]);
+
+        $this->assertSame('2026-11-06T14:00:00.000Z', $mock->jsonBody(0)['scheduled_at']);
+        $this->assertSame('2026-11-06T16:00:00.000Z', $mock->jsonBody(0)['expires_at']);
+        $this->assertSame('2026-11-07T15:00:00.000Z', $moved['expires_at']);
+        $this->assertRequest($mock, 'PATCH', '/v1/push/ps_1', 1);
+        $this->assertSame(['scheduled_at' => '2026-11-07T14:00:00Z', 'expires_at' => '2026-11-07T15:00:00Z'], $mock->jsonBody(1));
+        $this->assertNull($reset['expires_at']);
+        $this->assertSame(['scheduled_at' => '2026-11-07T14:00:00Z', 'expires_at' => null], $mock->jsonBody(2));
+    }
+
     public function testGetListUsage(): void
     {
         [$honkio, $mock] = MockHttp::honkio([
