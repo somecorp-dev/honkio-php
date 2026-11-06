@@ -160,10 +160,33 @@ Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=
 | `batch` | `send($emails, $idempotencyKey)`: a list of up to 100 emails, or `['template' => ..., 'recipients' => [...]]` for up to 500 recipients |
 | `domains` | `create($params)`, `get($id)`, `list()`, `update($id, $params)`, `verify($id)`, `remove($id)` |
 | `suppressions` | `create(['email_address' => ...])`, `list($query)`, `remove($emailAddress)` |
-| `templates` | `create`, `get($idOrAlias)`, `list`, `update`, `publish`, `rollback($idOrAlias, ['version' => 2])`, `versions`, `remove` |
+| `templates` | Email templates (`/v1/email-templates`): `create`, `get($idOrAlias)`, `list`, `update`, `publish`, `rollback($idOrAlias, ['version' => 2])`, `versions`, `remove` |
+| `channelTemplates` | Templates with email and SMS parts in English and French (`/v1/templates`): `create`, `get($idOrAlias)`, `list`, `update`, `publish`, `rollback($idOrAlias, ['version' => 2])`, `versions`, `remove`; see [Templates](#templates) |
 | `authApps` | HonkIO Auth; see [HonkIO Auth](#honkio-auth) |
 
 `Honkio\Endpoints::ALL` lists every route the SDK calls as `[resource, method, HTTP method, path]`, except the HonkIO Auth export download link, which is in `Honkio\Endpoints::UNCHECKED`.
+
+### Templates
+
+A template holds a part for each channel you send it on (`email`, `sms`), in English, French or both. `channelTemplates` makes and edits any template, including an SMS-only or French one; `templates` keeps the email-only shape for templates with an email part.
+
+```php
+$honkio->channelTemplates->create([
+    'name' => 'Sign-in code',
+    'alias' => 'signin-code',
+    'default_language' => 'en',
+    'variables' => [['key' => 'code']],
+    'parts' => [
+        'en' => ['sms' => ['text' => 'Your Acme code: {{ code }}']],
+        'fr' => ['sms' => ['text' => 'Votre code Acme : {{ code }}']],
+    ],
+]);
+$honkio->channelTemplates->publish('signin-code'); // live keys only; a test key sends the draft
+
+$honkio->messages->send(['from' => '+1416XXXXXXX', 'to' => '+1613XXXXXXX', 'template' => 'signin-code', 'variables' => ['code' => '123456'], 'language' => 'fr']);
+```
+
+A send in a language uses that language's part for the channel, else the default language's. On `update`, each part you name replaces that part, `null` removes it, and parts you leave out are kept; `'parts' => ['fr' => null]` removes every French part. `publish`, `rollback` and `remove` need a live key.
 
 ### Consent
 

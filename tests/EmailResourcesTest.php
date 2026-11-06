@@ -190,4 +190,58 @@ final class EmailResourcesTest extends TestCase
         }
         $this->assertSame(['version' => 2], $mock->jsonBody(5));
     }
+
+    public function testChannelTemplatesCoverEveryOperationOnV1Templates(): void
+    {
+        [$honkio, $mock] = MockHttp::honkio([
+            MockHttp::json(201, ['id' => 'tpl_1', 'object' => 'template']),
+            MockHttp::json(200, ['id' => 'tpl_1']),
+            MockHttp::json(200, ['data' => [], 'has_more' => false, 'next_cursor' => null]),
+            MockHttp::json(200, ['id' => 'tpl_1']),
+            MockHttp::json(200, ['id' => 'tpl_1']),
+            MockHttp::json(200, ['id' => 'tpl_1']),
+            MockHttp::json(200, ['data' => []]),
+            new Response(204),
+        ]);
+        $parts = [
+            'fr' => ['sms' => ['text' => 'Votre code : {{ code }}'], 'push' => ['title' => null, 'body' => 'Code : {{ code }}']],
+            'en' => ['email' => ['subject' => 'Your code', 'text' => 'Code: {{ code }}'], 'sms' => ['text' => 'Code: {{ code }}']],
+        ];
+        $created = $honkio->channelTemplates->create([
+            'name' => 'Sign-in code', 'alias' => 'signin-code', 'default_language' => 'fr',
+            'from_address' => null, 'variables' => [['key' => 'code']], 'parts' => $parts,
+        ]);
+        $honkio->channelTemplates->get('signin-code');
+        $honkio->channelTemplates->list(['limit' => 2, 'cursor' => 'c1']);
+        $honkio->channelTemplates->update('signin-code', ['default_language' => 'en', 'parts' => ['en' => ['email' => null], 'fr' => null]]);
+        $honkio->channelTemplates->publish('signin-code');
+        $honkio->channelTemplates->rollback('signin-code', ['version' => 2]);
+        $honkio->channelTemplates->versions('signin-code');
+        $this->assertNull($honkio->channelTemplates->remove('signin-code'));
+
+        $this->assertSame(['id' => 'tpl_1', 'object' => 'template'], $created);
+        $this->assertSame([
+            'name' => 'Sign-in code', 'alias' => 'signin-code', 'default_language' => 'fr',
+            'from_address' => null, 'variables' => [['key' => 'code']], 'parts' => $parts,
+        ], $mock->jsonBody());
+        $expected = [
+            ['POST', '/v1/templates'], ['GET', '/v1/templates/signin-code'], ['GET', '/v1/templates?limit=2&cursor=c1'],
+            ['PATCH', '/v1/templates/signin-code'], ['POST', '/v1/templates/signin-code/publish'],
+            ['POST', '/v1/templates/signin-code/rollback'], ['GET', '/v1/templates/signin-code/versions'],
+            ['DELETE', '/v1/templates/signin-code'],
+        ];
+        foreach ($expected as $i => [$method, $uri]) {
+            $this->assertRequest($mock, $method, $uri, $i);
+        }
+        $this->assertSame('{"default_language":"en","parts":{"en":{"email":null},"fr":null}}', (string) $mock->request(3)->getBody());
+        $this->assertSame(['version' => 2], $mock->jsonBody(5));
+    }
+
+    public function testChannelTemplatesSendEmptyPartsAsAnObject(): void
+    {
+        [$honkio, $mock] = MockHttp::honkio([MockHttp::json(200, ['id' => 'tpl_1'])]);
+        $honkio->channelTemplates->update('signin-code', ['name' => 'Code', 'parts' => []]);
+
+        $this->assertSame('{"name":"Code","parts":{}}', (string) $mock->request()->getBody());
+    }
 }
