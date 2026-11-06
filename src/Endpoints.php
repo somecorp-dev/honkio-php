@@ -206,11 +206,30 @@ final class Endpoints
     ];
 
     /**
+     * The Notify routes (/v1/notify, /v1/notifications, /v1/recipients). Held back
+     * from the public OpenAPI document until NOTIFY_ENABLED, like push, so
+     * tests/NotifyResourcesTest.php checks them against the Node SDK's route
+     * table. At launch they move into ALL.
+     *
+     * @var list<array{string, string, string, string}>
+     */
+    public const NOTIFY = [
+        ['notify', 'send', 'POST', '/v1/notify'],
+        ['notifications', 'get', 'GET', '/v1/notifications/{id}'],
+        ['notifications', 'list', 'GET', '/v1/notifications'],
+        ['recipients', 'upsert', 'PUT', '/v1/recipients/{user_id}'],
+        ['recipients', 'update', 'PATCH', '/v1/recipients/{user_id}'],
+        ['recipients', 'get', 'GET', '/v1/recipients/{user_id}'],
+        ['recipients', 'list', 'GET', '/v1/recipients'],
+        ['recipients', 'delete', 'DELETE', '/v1/recipients/{user_id}'],
+    ];
+
+    /**
      * Every route the SDK calls that the public snapshot does not have.
      *
      * @var list<array{string, string, string, string}>
      */
-    public const UNCHECKED = [...self::UNCHECKED_AUTH, ...self::PUSH];
+    public const UNCHECKED = [...self::UNCHECKED_AUTH, ...self::PUSH, ...self::NOTIFY];
 
     /**
      * Every HonkIO Auth route the SDK calls: its ALL entries and the export

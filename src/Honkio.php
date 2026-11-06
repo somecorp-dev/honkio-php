@@ -17,7 +17,10 @@ use Honkio\Resource\Consents;
 use Honkio\Resource\Domains;
 use Honkio\Resource\Emails;
 use Honkio\Resource\Messages;
+use Honkio\Resource\Notifications;
+use Honkio\Resource\Notify;
 use Honkio\Resource\Push;
+use Honkio\Resource\Recipients;
 use Honkio\Resource\OptInConfirmations;
 use Honkio\Resource\PhoneNumbers;
 use Honkio\Resource\SendLimit;
@@ -44,6 +47,11 @@ final class Honkio
     public readonly Emails $emails;
     /** Push notifications: apps, device tokens and sends. */
     public readonly Push $push;
+    /** Notify: one notification through push, SMS or email, whichever delivers first. */
+    public readonly Notify $notify;
+    public readonly Notifications $notifications;
+    /** Recipient profiles: contact details for your users, keyed by your own user id. */
+    public readonly Recipients $recipients;
     public readonly Batch $batch;
     public readonly Domains $domains;
     public readonly Suppressions $suppressions;
@@ -102,6 +110,9 @@ final class Honkio
 
         $this->emails = new Emails($http);
         $this->push = new Push($http);
+        $this->notify = new Notify($http);
+        $this->notifications = new Notifications($http);
+        $this->recipients = new Recipients($http);
         $this->batch = new Batch($http);
         $this->domains = new Domains($http);
         $this->suppressions = new Suppressions($http);

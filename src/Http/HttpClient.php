@@ -26,7 +26,7 @@ final class HttpClient
      * The routes that honour Idempotency-Key (api/src/routes/messages,
      * emails and push). A call without a key gets a generated one, kept across its retries.
      */
-    private const KEYED_ROUTES = ['POST /v1/messages', 'POST /v1/emails', 'POST /v1/emails/batch', 'POST /v1/push'];
+    private const KEYED_ROUTES = ['POST /v1/messages', 'POST /v1/emails', 'POST /v1/emails/batch', 'POST /v1/push', 'POST /v1/notify'];
 
     /** Nothing was sent or charged, and waiting is the fix: safe to retry on any route. */
     private const RETRY_ALWAYS = ['NUMBER_RATE_LIMITED', 'CARRIER_UNAVAILABLE', 'CARRIER_THROTTLED'];
