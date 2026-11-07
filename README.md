@@ -91,7 +91,7 @@ The client sends a call again when the API refused it only because it should wai
 
 | `errorCode` | Retried |
 |---|---|
-| `NUMBER_RATE_LIMITED` (429) | always: the sending number already has a minute of message parts waiting at the carrier (a local number sends 10 parts a minute) |
+| `NUMBER_RATE_LIMITED` (429) | always: the sending number already has a minute of message segments waiting at the carrier (a local number sends 10 segments a minute) |
 | `CARRIER_THROTTLED` (503) | always: the carrier asked HonkIO to slow down and did not take the message; nothing was charged |
 | `CARRIER_UNAVAILABLE` (503) | always: the carrier could not be reached; nothing was sent or charged |
 | `RATE_LIMITED` (429) | on a GET or a send with an idempotency key. Elsewhere it can be the route's own limit, such as one verification start per recipient a minute, where a repeat would send again |
@@ -106,11 +106,11 @@ $noRetries = new Honkio($key, ['max_retries' => 0]);
 
 Never retried: `CARRIER_TIMEOUT` (the message may have gone out: check its status with `messages->get()` before sending again), `DAILY_LIMIT_REACHED`, `FANOUT_LIMIT_REACHED`, `RECIPIENT_RATE_LIMITED`, `SENDING_PAUSED`, `NUMBER_QUEUE_FULL`, `SCHEDULED_LIMIT_REACHED`, and every validation, consent or authentication error.
 
-A local number sends 10 message parts a minute, so a burst bigger than that is spread out at that pace: each refusal says how long until there is room (about 6 seconds per part waiting). For a list, send to a contact group or pace your sends; for real volume, use a verified toll-free number. Do not spread one list across several numbers to go faster: carriers treat that as snowshoeing and it breaks the acceptable use policy.
+A local number sends 10 message segments a minute, so a burst bigger than that is spread out at that pace: each refusal says how long until there is room (about 6 seconds per segment waiting). For a list, send to a contact group or pace your sends; for real volume, use a verified toll-free number. Do not spread one list across several numbers to go faster: carriers treat that as snowshoeing and it breaks the acceptable use policy.
 
 ### Send limit and number queues
 
-`messages->send()` returns the message with `estimated_send_at`: an ISO 8601 estimate of when the carrier should start sending it, from the parts already waiting on the sending number (`null` in test mode and on a retry that returned an earlier send). `sendLimit->get()` shows the rest before a burst: the daily cap and what is left of it, the per-recipient caps, probation, any pause, past volume requests, and `number_queues`, each number's carrier queue.
+`messages->send()` returns the message with `estimated_send_at`: an ISO 8601 estimate of when the carrier should start sending it, from the segments already waiting on the sending number (`null` in test mode and on a retry that returned an earlier send). `sendLimit->get()` shows the rest before a burst: the daily cap and what is left of it, the per-recipient caps, probation, any pause, past volume requests, and `number_queues`, each number's carrier queue.
 
 ```php
 $limits = $honkio->sendLimit->get();
