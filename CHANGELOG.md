@@ -2,6 +2,14 @@
 
 Versions are published to Packagist from a read-only mirror by hand; a version without a date is not published yet.
 
+## Unreleased
+
+### Added
+
+- `pricing->get()` reads the current prices (`GET /v1/pricing`): CAD cents per SMS segment (`message_cost_cents`), per typical verification (`verification_cost_cents`), number rent and fees, inbound SMS, and the email and push prices in millicents while those products are available. Listed in `Honkio\Endpoints`.
+- Verifications carry `test_code`: on a TEST verification the code that completes it (all zeros, `code_length` digits), `null` on a LIVE one.
+- A wrong code on `verify->check()` is unchanged for the SDK (`$e->details['attempts_remaining']`): the API now sends it under `details` as well as beside the error envelope.
+
 ## 0.4.0 (2026-11-06)
 
 ### Added

@@ -71,7 +71,7 @@ Every exception implements `Honkio\Exception\HonkioException`, so `catch (Honkio
 
 `ApiException` subclasses by status: `BadRequestException` (400), `AuthenticationException` (401), `PaymentRequiredException` (402), `PermissionDeniedException` (403), `NotFoundException` (404), `ConflictException` (409), `UnprocessableEntityException` (422), `RateLimitException` (429), `UnavailableForLegalReasonsException` (451), `InternalServerException` (5xx). A response whose body is not JSON (a proxy error page, say) has `errorCode` `application_error`.
 
-`details` is the API's `details` when it sent one (validation paths, `retry_after`, missing template keys). Otherwise it holds whatever the API sent beside the error envelope: `['attempts_remaining' => 4]` on `VERIFICATION_INVALID_CODE`.
+`details` is the API's `details` when it sent one (validation paths, `retry_after`, missing template keys, `['attempts_remaining' => 4]` on `VERIFICATION_INVALID_CODE`). Otherwise it holds whatever the API sent beside the error envelope.
 
 ```php
 try {
@@ -149,9 +149,10 @@ Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=
 | `businessVerification` | `get()` (null before a profile is saved), `save($params)`, `submit()` |
 | `autoTopup` | `get()`: settings, saved card summary, pause state. Read-only |
 | `sendLimit` | `get()`: the daily cap and usage, per-recipient caps, probation, any pause, past volume requests, and `number_queues`; see [Send limit and number queues](#send-limit-and-number-queues) |
+| `pricing` | `get()`: current prices in CAD cents (`message_cost_cents`, `verification_cost_cents`, number rent and fees; email and push in millicents) |
 | `topupCapRequests` | `create($params)`, `list()` |
 | `optInConfirmations` | `send($params)`, `list($query)` |
-| `verify` | `start($params)`, `check($id, $params)`, `get($id)`, `list($query)` |
+| `verify` | `start($params)`, `check($id, $params)`, `get($id)`, `list($query)`. A test key sends nothing; the verification's `test_code` is the code that completes it (`null` on a live one) |
 | `consents` | `create($params)`, `recordBatch($params)`, `list($query)`, `check($subject)`, `revoke($subject)` |
 | `consentBatches` | `list($query)`, `get($id)` |
 | `webhooks` | `create`, `list`, `get`, `update`, `remove`, `deliveries($id, $query)`, `deadLetters($id, $query)`, `replay($deadLetterId)`, `discard($deadLetterId)`, `reactivate($id)`, `rotateSecret($id)`, `verify($rawBody, $headers, $secret)` |

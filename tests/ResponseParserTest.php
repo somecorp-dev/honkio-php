@@ -66,6 +66,17 @@ final class ResponseParserTest extends TestCase
         }
     }
 
+    public function testAWrongVerificationCodeWithDetailsAndTheTopLevelFieldIsNotNestedTwice(): void
+    {
+        // The API sends attempts_remaining both under details and at the top level.
+        try {
+            ResponseParser::parse(422, '{"code":"VERIFICATION_INVALID_CODE","message":"m","messageEn":"m","messageFr":"m","statusCode":422,"details":{"attempts_remaining":2},"attempts_remaining":2}');
+            $this->fail('expected an exception');
+        } catch (UnprocessableEntityException $e) {
+            $this->assertSame(['attempts_remaining' => 2], $e->details);
+        }
+    }
+
     public function testExplicitDetailsWinOverExtraFields(): void
     {
         try {

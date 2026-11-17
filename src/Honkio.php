@@ -24,6 +24,7 @@ use Honkio\Resource\Push;
 use Honkio\Resource\Recipients;
 use Honkio\Resource\OptInConfirmations;
 use Honkio\Resource\PhoneNumbers;
+use Honkio\Resource\Pricing;
 use Honkio\Resource\SendLimit;
 use Honkio\Resource\Suppressions;
 use Honkio\Resource\Templates;
@@ -70,6 +71,7 @@ final class Honkio
     public readonly BusinessVerification $businessVerification;
     public readonly AutoTopup $autoTopup;
     public readonly SendLimit $sendLimit;
+    public readonly Pricing $pricing;
     public readonly TopupCapRequests $topupCapRequests;
     public readonly Verify $verify;
     public readonly Consents $consents;
@@ -132,6 +134,7 @@ final class Honkio
         $this->businessVerification = new BusinessVerification($http);
         $this->autoTopup = new AutoTopup($http);
         $this->sendLimit = new SendLimit($http);
+        $this->pricing = new Pricing($http);
         $this->topupCapRequests = new TopupCapRequests($http);
         $this->verify = new Verify($http);
         $this->consents = new Consents($http);

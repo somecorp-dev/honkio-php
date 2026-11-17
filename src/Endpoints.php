@@ -99,6 +99,7 @@ final class Endpoints
         ['businessVerification', 'submit', 'POST', '/v1/business-verification/submit'],
         ['autoTopup', 'get', 'GET', '/v1/auto-topup'],
         ['sendLimit', 'get', 'GET', '/v1/send-limit'],
+        ['pricing', 'get', 'GET', '/v1/pricing'],
         ['topupCapRequests', 'create', 'POST', '/v1/account/topup-cap-requests'],
         ['topupCapRequests', 'list', 'GET', '/v1/account/topup-cap-requests'],
         ...self::AUTH_APPS,
