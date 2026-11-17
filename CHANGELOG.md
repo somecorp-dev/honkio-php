@@ -2,7 +2,7 @@
 
 Versions are published to Packagist from a read-only mirror by hand; a version without a date is not published yet.
 
-## Unreleased
+## 0.5.0
 
 ### Added
 
