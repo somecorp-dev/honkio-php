@@ -323,7 +323,7 @@ final class SmsResourcesTest extends TestCase
         $honkio->webhooks->get('w1');
         $honkio->webhooks->update('w1', ['active' => false]);
         $this->assertNull($honkio->webhooks->remove('w1'));
-        $honkio->webhooks->deliveries('w1', ['limit' => 3]);
+        $honkio->webhooks->deliveries('w1', ['limit' => 3, 'cursor' => 'c_next']);
         $honkio->webhooks->deadLetters('w1');
         $honkio->webhooks->replay('dl1');
         $this->assertNull($honkio->webhooks->discard('dl1'));
@@ -332,7 +332,7 @@ final class SmsResourcesTest extends TestCase
 
         $expected = [
             ['POST', '/v1/webhooks'], ['GET', '/v1/webhooks'], ['GET', '/v1/webhooks/w1'], ['PATCH', '/v1/webhooks/w1'],
-            ['DELETE', '/v1/webhooks/w1'], ['GET', '/v1/webhooks/w1/deliveries?limit=3'], ['GET', '/v1/webhooks/w1/dead-letters'],
+            ['DELETE', '/v1/webhooks/w1'], ['GET', '/v1/webhooks/w1/deliveries?limit=3&cursor=c_next'], ['GET', '/v1/webhooks/w1/dead-letters'],
             ['POST', '/v1/webhooks/dead-letters/dl1/replay'], ['DELETE', '/v1/webhooks/dead-letters/dl1'],
             ['POST', '/v1/webhooks/w1/reactivate'], ['POST', '/v1/webhooks/w1/rotate-secret'],
         ];

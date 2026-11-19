@@ -66,9 +66,10 @@ final class Webhooks
     }
 
     /**
-     * Recent delivery attempts.
+     * Recent delivery attempts, newest first: `data` and `next_cursor`.
+     * Pass `next_cursor` back as `cursor` for the next page.
      *
-     * @param array<string, mixed> $query
+     * @param array<string, mixed> $query `limit` (1 to 200, default 50) and `cursor`
      * @return array<mixed>
      */
     public function deliveries(string $id, array $query = []): array

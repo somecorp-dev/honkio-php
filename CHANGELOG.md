@@ -2,6 +2,12 @@
 
 Versions are published to Packagist from a read-only mirror by hand; a version without a date is not published yet.
 
+## Unreleased
+
+### Added
+
+- `webhooks->deliveries($id, ['cursor' => ...])` pages: the response carries `next_cursor` (`null` on the last page); pass it back as `cursor` for the next page. Without a cursor the first page is as before.
+
 ## 0.5.0 (2026-11-17)
 
 ### Added
