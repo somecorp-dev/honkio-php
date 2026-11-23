@@ -138,6 +138,7 @@ final class EmailResourcesTest extends TestCase
             MockHttp::json(200, ['email_address' => 'a@b.ca', 'reason' => 'manual']),
             MockHttp::json(200, ['data' => []]),
             new Response(204),
+            MockHttp::json(200, ['data' => []]),
         ]);
         $honkio->suppressions->create(['email_address' => 'a@b.ca']);
         $honkio->suppressions->list(['limit' => 3]);
@@ -147,6 +148,8 @@ final class EmailResourcesTest extends TestCase
         $this->assertSame(['email_address' => 'a@b.ca', 'reason' => 'manual'], $mock->jsonBody());
         $this->assertRequest($mock, 'GET', '/v1/email-suppressions?limit=3', 1);
         $this->assertRequest($mock, 'DELETE', '/v1/email-suppressions/a%40b.ca', 2);
+        $honkio->suppressions->list(['address' => 'A@b.ca']);
+        $this->assertRequest($mock, 'GET', '/v1/email-suppressions?address=A%40b.ca', 3);
     }
 
     public function testEmailTemplatesUpdateCanClearAFieldWithNull(): void

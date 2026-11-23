@@ -49,6 +49,7 @@ final class Endpoints
         ['webhooks', 'discard', 'DELETE', '/v1/webhooks/dead-letters/{dlid}'],
         ['webhooks', 'reactivate', 'POST', '/v1/webhooks/{id}/reactivate'],
         ['webhooks', 'rotateSecret', 'POST', '/v1/webhooks/{id}/rotate-secret'],
+        ['webhooks', 'sendTest', 'POST', '/v1/webhooks/{id}/test'],
         ['emails', 'send', 'POST', '/v1/emails'],
         ['emails', 'get', 'GET', '/v1/emails/{id}'],
         ['emails', 'list', 'GET', '/v1/emails'],

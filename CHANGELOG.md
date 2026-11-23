@@ -6,6 +6,8 @@ Versions are published to Packagist from a read-only mirror by hand; a version w
 
 ### Added
 
+- `webhooks->sendTest($id)` sends one signed `webhook.test` event to an endpoint now, active or not, and returns what it answered (`delivered`, `http_status`, `error_reason`). The attempt shows in `deliveries`; it is not retried and does not change the endpoint's health. At most 10 a minute per account. Listed in `Honkio\Endpoints`.
+- `suppressions->list(['address' => ...])` looks up one full address, matched exactly whatever its case: the page holds its suppression, or nothing.
 - `webhooks->deliveries($id, ['cursor' => ...])` pages: the response carries `next_cursor` (`null` on the last page); pass it back as `cursor` for the next page. Without a cursor the first page is as before.
 
 ## 0.5.0 (2026-11-17)

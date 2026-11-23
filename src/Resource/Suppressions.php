@@ -34,7 +34,9 @@ final class Suppressions
     }
 
     /**
-     * A page of suppressed addresses.
+     * A page of suppressed addresses. Query: `limit`, `cursor`, `reason`
+     * (hard_bounce, complaint, unsubscribe or manual) and `address` (one full
+     * address, matched exactly whatever its case: its suppression, or nothing).
      *
      * @param array<string, mixed> $query
      * @return array<mixed>

@@ -317,6 +317,7 @@ final class SmsResourcesTest extends TestCase
             new Response(204),
             MockHttp::json(200, ['ok' => true]),
             MockHttp::json(200, ['secret' => 'new']),
+            MockHttp::json(200, ['delivered' => true, 'http_status' => 200, 'error_reason' => null]),
         ]);
         $honkio->webhooks->create(['url' => 'https://example.com/hook', 'events' => ['message.delivered']]);
         $honkio->webhooks->list();
@@ -329,12 +330,14 @@ final class SmsResourcesTest extends TestCase
         $this->assertNull($honkio->webhooks->discard('dl1'));
         $honkio->webhooks->reactivate('w1');
         $honkio->webhooks->rotateSecret('w1');
+        $this->assertTrue($honkio->webhooks->sendTest('w1')['delivered']);
 
         $expected = [
             ['POST', '/v1/webhooks'], ['GET', '/v1/webhooks'], ['GET', '/v1/webhooks/w1'], ['PATCH', '/v1/webhooks/w1'],
             ['DELETE', '/v1/webhooks/w1'], ['GET', '/v1/webhooks/w1/deliveries?limit=3&cursor=c_next'], ['GET', '/v1/webhooks/w1/dead-letters'],
             ['POST', '/v1/webhooks/dead-letters/dl1/replay'], ['DELETE', '/v1/webhooks/dead-letters/dl1'],
             ['POST', '/v1/webhooks/w1/reactivate'], ['POST', '/v1/webhooks/w1/rotate-secret'],
+            ['POST', '/v1/webhooks/w1/test'],
         ];
         foreach ($expected as $i => [$method, $uri]) {
             $this->assertRequest($mock, $method, $uri, $i);

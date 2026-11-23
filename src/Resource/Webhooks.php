@@ -127,6 +127,19 @@ final class Webhooks
     }
 
     /**
+     * Send one signed `webhook.test` event to the endpoint now, active or not.
+     * Returns what it answered: `delivered`, `http_status` and `error_reason`.
+     * The attempt is logged in deliveries, is not retried and does not change
+     * the endpoint's health. At most 10 a minute per account.
+     *
+     * @return array<mixed>
+     */
+    public function sendTest(string $id): array
+    {
+        return $this->http->callArray('POST', '/v1/webhooks/{id}/test', ['id' => $id]);
+    }
+
+    /**
      * Check an incoming webhook. See {@see Webhook::verify()}.
      *
      * @param array<string, string|list<string>> $headers

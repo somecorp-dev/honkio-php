@@ -155,12 +155,12 @@ Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=
 | `verify` | `start($params)`, `check($id, $params)`, `get($id)`, `list($query)`. A test key sends nothing; the verification's `test_code` is the code that completes it (`null` on a live one) |
 | `consents` | `create($params)`, `recordBatch($params)`, `list($query)`, `check($subject)`, `revoke($subject)` |
 | `consentBatches` | `list($query)`, `get($id)` |
-| `webhooks` | `create`, `list`, `get`, `update`, `remove`, `deliveries($id, $query)`, `deadLetters($id, $query)`, `replay($deadLetterId)`, `discard($deadLetterId)`, `reactivate($id)`, `rotateSecret($id)`, `verify($rawBody, $headers, $secret)` |
+| `webhooks` | `create`, `list`, `get`, `update`, `remove`, `deliveries($id, $query)`, `deadLetters($id, $query)`, `replay($deadLetterId)`, `discard($deadLetterId)`, `reactivate($id)`, `rotateSecret($id)`, `sendTest($id)`, `verify($rawBody, $headers, $secret)` |
 | `emails` | `send($params, $idempotencyKey)`, `get($id)`, `list($query)`, `update($id, $params)`, `cancel($id)` |
 | `emails->received` | `list($query)`, `address()`, `setAddressEnabled($enabled)`, `get($id, $query)`, `raw($id)`, `attachment($id, $attachmentId)` (both return the body as a string), `simulate($params)` (test keys only) |
 | `batch` | `send($emails, $idempotencyKey)`: a list of up to 100 emails, or `['template' => ..., 'recipients' => [...]]` for up to 500 recipients |
 | `domains` | `create($params)`, `get($id)`, `list()`, `update($id, $params)`, `verify($id)`, `remove($id)` |
-| `suppressions` | `create(['email_address' => ...])`, `list($query)`, `remove($emailAddress)` |
+| `suppressions` | `create(['email_address' => ...])`, `list($query)` (`reason`, `address`), `remove($emailAddress)` |
 | `templates` | Templates with email, SMS and push parts in English and French (`/v1/templates`): `create`, `get($idOrAlias)`, `list`, `update`, `publish`, `rollback($idOrAlias, ['version' => 2])`, `versions`, `remove`; see [Templates](#templates) |
 | `emailTemplates` | Deprecated: use `templates`. The email-only shape (`/v1/email-templates`) of the templates that have an email part, with the same methods |
 | `authApps` | HonkIO Auth; see [HonkIO Auth](#honkio-auth) |
