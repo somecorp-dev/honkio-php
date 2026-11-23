@@ -303,6 +303,18 @@ final class SmsResourcesTest extends TestCase
         $this->assertRequest($mock, 'GET', '/v1/compliance/opt-in-confirmations?status=pending', 1);
     }
 
+    public function testWebhookNumberFilterIsSentAsGiven(): void
+    {
+        [$honkio, $mock] = MockHttp::honkio([
+            MockHttp::json(200, ['id' => 'w1', 'secret' => 's']),
+            MockHttp::json(200, ['id' => 'w1']),
+        ]);
+        $honkio->webhooks->create(['url' => 'https://example.com/hook', 'events' => ['message.received'], 'phone_number_ids' => ['pn_1']]);
+        $honkio->webhooks->update('w1', ['phone_number_ids' => null]);
+        $this->assertSame(['url' => 'https://example.com/hook', 'events' => ['message.received'], 'phone_number_ids' => ['pn_1']], $mock->jsonBody(0));
+        $this->assertSame(['phone_number_ids' => null], $mock->jsonBody(1));
+    }
+
     public function testWebhooks(): void
     {
         [$honkio, $mock] = MockHttp::honkio([

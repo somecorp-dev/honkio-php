@@ -17,6 +17,7 @@ final class Webhooks
 
     /**
      * Create a webhook endpoint. The response carries the signing secret once.
+     * `phone_number_ids` (list of ids, or null for every number) limits it to events about those numbers.
      *
      * @param array<string, mixed> $params
      * @return array<mixed>
