@@ -18,6 +18,7 @@ use Honkio\Resource\Domains;
 use Honkio\Resource\EmailTemplates;
 use Honkio\Resource\Emails;
 use Honkio\Resource\Messages;
+use Honkio\Resource\MonthlyBilling;
 use Honkio\Resource\Notifications;
 use Honkio\Resource\Notify;
 use Honkio\Resource\Push;
@@ -70,6 +71,7 @@ final class Honkio
     public readonly TollFreeVerifications $tollFreeVerifications;
     public readonly BusinessVerification $businessVerification;
     public readonly AutoTopup $autoTopup;
+    public readonly MonthlyBilling $monthlyBilling;
     public readonly SendLimit $sendLimit;
     public readonly Pricing $pricing;
     public readonly TopupCapRequests $topupCapRequests;
@@ -133,6 +135,7 @@ final class Honkio
         $this->tollFreeVerifications = new TollFreeVerifications($http);
         $this->businessVerification = new BusinessVerification($http);
         $this->autoTopup = new AutoTopup($http);
+        $this->monthlyBilling = new MonthlyBilling($http);
         $this->sendLimit = new SendLimit($http);
         $this->pricing = new Pricing($http);
         $this->topupCapRequests = new TopupCapRequests($http);

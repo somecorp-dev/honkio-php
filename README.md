@@ -148,6 +148,7 @@ Query lists repeat the key (`['status' => ['a', 'b']]` becomes `status=a&status=
 | `tollFreeVerifications` | `options()`, `create($params)`, `update($id, $params)`, `submit($id)`, `cancel($id)`, `get($id)`, `list($query)` |
 | `businessVerification` | `get()` (null before a profile is saved), `save($params)`, `submit()` |
 | `autoTopup` | `get()`: settings, saved card summary, pause state. Read-only |
+| `monthlyBilling` | `get()`: `billing_mode`, `status` (`off`, `awaiting_card`, `active`, `retrying`, `held`), `credit_limit_cents`, `amount_owed_cents`, the saved card, `next_charge_at`, `pay_now` and the 6 most recent charges. Read-only |
 | `sendLimit` | `get()`: the daily cap and usage, per-recipient caps, probation, any pause, past volume requests, and `number_queues`; see [Send limit and number queues](#send-limit-and-number-queues) |
 | `pricing` | `get()`: current prices in CAD cents (`message_cost_cents`, `verification_cost_cents`, number rent and fees; email and push in millicents) |
 | `topupCapRequests` | `create($params)`, `list()` |

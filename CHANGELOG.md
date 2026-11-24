@@ -6,6 +6,9 @@ Versions are published to Packagist from a read-only mirror by hand; a version w
 
 ### Added
 
+- `monthlyBilling->get()` reads monthly billing (`GET /v1/monthly-billing`), an option HonkIO staff switch on for an approved account: `billing_mode` (`prepaid` or `monthly`), `status` (`off`, `awaiting_card`, `active`, `retrying` or `held`) and `held_reason`, `credit_limit_cents`, `amount_owed_cents`, the saved `card`, `next_charge_at`, `pay_now` (the amount to pay after a failed charge) and the 6 most recent `charges`. Read-only. Listed in `Honkio\Endpoints`.
+- The account document (`GET /v1/accounts/me` and `/v1/accounts/{id}`) gains `billing_mode`, `credit_limit_cents`, `amount_owed_cents` and `monthly_billing_status`. On monthly billing `balance_cents` goes below zero, down to the credit limit.
+- `WebhookEvents` gains `account.monthly_charge_succeeded`, `account.monthly_charge_failed` and `account.monthly_billing_held`.
 - `webhooks->sendTest($id)` sends one signed `webhook.test` event to an endpoint now, active or not, and returns what it answered (`delivered`, `http_status`, `error_reason`). The attempt shows in `deliveries`; it is not retried and does not change the endpoint's health. At most 10 a minute per account. Listed in `Honkio\Endpoints`.
 - `suppressions->list(['address' => ...])` looks up one full address, matched exactly whatever its case: the page holds its suppression, or nothing.
 - `webhooks->deliveries($id, ['cursor' => ...])` pages: the response carries `next_cursor` (`null` on the last page); pass it back as `cursor` for the next page. Without a cursor the first page is as before.

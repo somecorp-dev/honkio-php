@@ -394,6 +394,7 @@ final class SmsResourcesTest extends TestCase
             MockHttp::json(200, ['status' => 'draft']),
             MockHttp::json(200, ['status' => 'pending']),
             MockHttp::json(200, ['enabled' => false]),
+            MockHttp::json(200, ['billing_mode' => 'monthly', 'status' => 'active']),
             MockHttp::json(200, ['daily_limit' => 250, 'number_queues' => []]),
             MockHttp::json(200, ['message_cost_cents' => 3, 'verification_cost_cents' => 5]),
             MockHttp::json(200, ['id' => 'r1']),
@@ -403,6 +404,7 @@ final class SmsResourcesTest extends TestCase
         $honkio->businessVerification->save(['legal_name' => 'Acme']);
         $honkio->businessVerification->submit();
         $honkio->autoTopup->get();
+        $this->assertSame(['billing_mode' => 'monthly', 'status' => 'active'], $honkio->monthlyBilling->get());
         $this->assertSame(['daily_limit' => 250, 'number_queues' => []], $honkio->sendLimit->get());
         $this->assertSame(['message_cost_cents' => 3, 'verification_cost_cents' => 5], $honkio->pricing->get());
         $honkio->topupCapRequests->create(['requested_cap_cents' => 100000]);
@@ -410,7 +412,7 @@ final class SmsResourcesTest extends TestCase
 
         $expected = [
             ['GET', '/v1/business-verification'], ['PUT', '/v1/business-verification'],
-            ['POST', '/v1/business-verification/submit'], ['GET', '/v1/auto-topup'], ['GET', '/v1/send-limit'],
+            ['POST', '/v1/business-verification/submit'], ['GET', '/v1/auto-topup'], ['GET', '/v1/monthly-billing'], ['GET', '/v1/send-limit'],
             ['GET', '/v1/pricing'], ['POST', '/v1/account/topup-cap-requests'], ['GET', '/v1/account/topup-cap-requests'],
         ];
         foreach ($expected as $i => [$method, $uri]) {
